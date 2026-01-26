@@ -1,0 +1,98 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus AI | Senior Data Analyst</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep-wine: #2A1212;
+            --bg-secondary: #3A1A1A;
+            --text-primary: #F5EDED;
+            --text-muted: #C9B3B3;
+            --accent-rose: #F4A6A6;
+            --accent-hover: #F08080;
+            --insight-highlight: #FFD6A5;
+            --success-green: #9FE6A0;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-deep-wine);
+            color: var(--text-primary);
+            overflow: hidden;
+            margin: 0;
+        }
+        .glass {
+            background: rgba(42, 18, 18, 0.6);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(244, 166, 166, 0.1);
+        }
+        .accent-gradient {
+            background: linear-gradient(135deg, var(--accent-rose) 0%, #E57373 100%);
+        }
+        .text-accent {
+            color: var(--accent-rose);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(244, 166, 166, 0.15);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(244, 166, 166, 0.3);
+        }
+        
+        @keyframes glow-sweep {
+            0% { left: -100%; opacity: 0; }
+            30% { opacity: 0.4; }
+            70% { opacity: 0.4; }
+            100% { left: 200%; opacity: 0; }
+        }
+        
+        .glow-sweep-bar {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 50%;
+            background: linear-gradient(90deg, transparent, rgba(244, 166, 166, 0.2), transparent);
+            animation: glow-sweep 6s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Utility for the new colors that tailwind might not pick up immediately */
+        .bg-wine { background-color: var(--bg-deep-wine); }
+        .bg-wine-light { background-color: var(--bg-secondary); }
+        .text-muted { color: var(--text-muted); }
+        .border-rose { border-color: rgba(244, 166, 166, 0.2); }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.0.0",
+    "react/": "https://esm.sh/react@19.0.0/",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/": "https://esm.sh/react-dom@19.0.0/",
+    "@google/genai": "https://esm.sh/@google/genai@1.36.0",
+    "recharts": "https://esm.sh/recharts@2.15.0?deps=react@19.0.0,react-dom@19.0.0",
+    "framer-motion": "https://esm.sh/framer-motion@11.15.0?deps=react@19.0.0,react-dom@19.0.0",
+    "lucide-react": "https://esm.sh/lucide-react@0.468.0?deps=react@19.0.0",
+    "@tanstack/react-table": "https://esm.sh/@tanstack/react-table@8.20.5?deps=react@19.0.0,react-dom@19.0.0",
+    "xlsx": "https://esm.sh/xlsx@^0.18.5"
+  }
+}
+</script>
+</head>
+<body>
+    <div id="root"></div>
+</body>
+</html>

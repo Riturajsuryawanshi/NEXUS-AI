@@ -1,0 +1,8 @@
+{
+  "name": "Nexus AI Data Hub",
+  "description": "A world-class AI platform for advanced data analysis, profiling, quality auditing, and professional multi-sheet reporting using Gemini 3.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}
