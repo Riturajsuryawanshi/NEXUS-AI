@@ -56,6 +56,12 @@ export class UserService {
       .single();
 
     if (error || !data) {
+      if (!data && !error) {
+        // Optimistic recovery: Profile row missing? Create one!
+        console.warn("Profile missing for user. Attempting to create default profile...");
+        await this.createDefaultProfile(userId);
+        return; // createDefaultProfile will call fetchProfile again or set currentProfile
+      }
       console.error('Error fetching profile:', error);
       return;
     }
@@ -75,6 +81,34 @@ export class UserService {
       preferences: data.preferences || { learningMode: true }
     };
     this.notify();
+  }
+
+  private static async createDefaultProfile(userId: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const newProfile = {
+      id: userId,
+      email: user.email,
+      display_name: user.user_metadata.full_name || user.email?.split('@')[0] || 'Analyst',
+      avatar_url: user.user_metadata.avatar_url || '',
+      plan_type: 'free',
+      daily_file_limit: 3,
+      files_processed_today: 0,
+      ai_calls_remaining: 5,
+      preferences: { learningMode: true }
+    };
+
+    const { error } = await supabase
+      .from('profiles')
+      .insert([newProfile]);
+
+    if (error) {
+      console.error("Failed to create default profile:", error);
+    } else {
+      // Retry fetching
+      await this.fetchProfile(userId);
+    }
   }
 
   static async login(email: string): Promise<void> {
