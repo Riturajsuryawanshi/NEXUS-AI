@@ -53,7 +53,7 @@ export class ClientService {
             return;
         }
 
-        if (data) {
+        if (data && data.length > 0) {
             this.clients = data.map(row => ({
                 id: row.id,
                 name: row.name,
@@ -70,6 +70,14 @@ export class ClientService {
                 datasetCount: 0 // We'd need to count jobs to get this real number
             }));
             this.notify();
+        } else {
+            // Auto-create default workspace if none exists
+            console.log("No workspaces found. Auto-creating default...");
+            try {
+                await this.createClient('Personal Workspace', 'Personal', 'USD');
+            } catch (err) {
+                console.error("Failed to auto-create default workspace:", err);
+            }
         }
     }
 

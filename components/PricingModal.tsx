@@ -9,36 +9,68 @@ interface PricingModalProps {
 }
 
 export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, currentUserProfile }) => {
-    const [loading, setLoading] = useState(false);
+    const [loadingId, setLoadingId] = useState<string | null>(null);
     const [view, setView] = useState<'plans' | 'credits'>('plans');
 
     if (!isOpen) return null;
 
     const currentPlan = currentUserProfile?.planType || 'free';
 
-    const handleUpgrade = async (planType: PlanType) => {
-        setLoading(true);
+    const handlePayment = async (itemId: string, itemType: 'plan' | 'credit', amount: number, currency: string) => {
+        setLoadingId(itemId);
         try {
-            await SubscriptionService.upgradePlan(currentUserProfile!.userId, planType);
-            alert(`Successfully upgraded to ${PLANS[planType].label}!`);
-            onClose();
-        } catch (error: any) {
-            alert(`Upgrade failed: ${error.message}`);
-        } finally {
-            setLoading(false);
-        }
-    };
+            // Mocking Razorpay Opening
+            const options = {
+                key: "YOUR_RAZORPAY_KEY", // Enter the Key ID generated from the Dashboard
+                amount: amount * 100, // Amount is in currency subunits. Default currency is INR. Hence, 50000 refers to 50000 paise
+                currency: currency,
+                name: "NexusAnalyst",
+                description: `Payment for ${itemId}`,
+                image: "https://example.com/your_logo",
+                handler: async function (response: any) {
+                    // alert(response.razorpay_payment_id);
+                    // simulate success backend call
+                    if (itemType === 'plan') {
+                        await SubscriptionService.upgradePlan(currentUserProfile!.userId, itemId as PlanType);
+                        alert(`Successfully upgraded to ${PLANS[itemId as PlanType].label}!`);
+                    } else {
+                        await SubscriptionService.purchaseCredits(currentUserProfile!.userId, itemId);
+                        alert('Credits purchased successfully!');
+                    }
+                    onClose();
+                },
+                prefill: {
+                    name: currentUserProfile?.displayName || "",
+                    email: currentUserProfile?.email || "",
+                    contact: ""
+                },
+                theme: {
+                    color: "#4f46e5"
+                }
+            };
 
-    const handleBuyCredits = async (packId: string) => {
-        setLoading(true);
-        try {
-            await SubscriptionService.purchaseCredits(currentUserProfile!.userId, packId);
-            alert('Credits purchased successfully!');
-            onClose();
+            // Check if Razorpay is loaded
+            if ((window as any).Razorpay) {
+                const rzp1 = new (window as any).Razorpay(options);
+                rzp1.open();
+            } else {
+                // Fallback if Razorpay script fails or for dev testing without script
+                console.warn("Razorpay SDK not loaded. Simulating direct success.");
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                if (itemType === 'plan') {
+                    await SubscriptionService.upgradePlan(currentUserProfile!.userId, itemId as PlanType);
+                    alert(`Successfully upgraded to ${PLANS[itemId as PlanType].label}!`);
+                } else {
+                    await SubscriptionService.purchaseCredits(currentUserProfile!.userId, itemId);
+                    alert('Credits purchased successfully!');
+                }
+                onClose();
+            }
+
         } catch (error: any) {
-            alert(`Purchase failed: ${error.message}`);
+            alert(`Payment failed: ${error.message}`);
         } finally {
-            setLoading(false);
+            setLoadingId(null);
         }
     };
 
@@ -103,16 +135,16 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, cur
                                         </ul>
 
                                         <button
-                                            onClick={() => handleUpgrade(planKey)}
-                                            disabled={isCurrent || loading}
+                                            onClick={() => handlePayment(planKey, 'plan', plan.price, plan.currency)}
+                                            disabled={isCurrent || loadingId !== null}
                                             className={`w-full py-4 rounded-xl font-bold transition-all ${isCurrent
-                                                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                                    : isPro
-                                                        ? 'bg-slate-900 text-white hover:bg-indigo-600 shadow-lg hover:shadow-indigo-500/20'
-                                                        : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                                                ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                                : isPro
+                                                    ? 'bg-slate-900 text-white hover:bg-indigo-600 shadow-lg hover:shadow-indigo-500/20'
+                                                    : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
                                                 }`}
                                         >
-                                            {loading ? 'Processing...' : isCurrent ? 'Active Plan' : `Upgrade to ${plan.label}`}
+                                            {loadingId === planKey ? 'Processing...' : isCurrent ? 'Active Plan' : `Upgrade to ${plan.label}`}
                                         </button>
                                     </div>
                                 );
@@ -143,11 +175,11 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, cur
                                     </div>
 
                                     <button
-                                        onClick={() => handleBuyCredits(pack.id)}
-                                        disabled={loading}
+                                        onClick={() => handlePayment(pack.id, 'credit', pack.price, 'INR')}
+                                        disabled={loadingId !== null}
                                         className="w-full py-4 rounded-xl font-bold bg-white border-2 border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white transition-all"
                                     >
-                                        {loading ? 'Processing...' : 'Buy Pack'}
+                                        {loadingId === pack.id ? 'Processing...' : 'Buy Pack'}
                                     </button>
                                 </div>
                             ))}

@@ -1,50 +1,165 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NexusAnalyst - AI Data Pipeline</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <style>
-      body { font-family: 'Inter', sans-serif; }
-      h1, h2, h3, h4, .font-display { font-family: 'Space Grotesk', sans-serif; }
-      .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); }
-      .dark-glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); }
-      .gradient-border {
-        position: relative;
-        border-radius: 0.75rem;
-        background: linear-gradient(to right, #6366f1, #a855f7);
-        padding: 1px;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NexusAnalyst - AI Data Pipeline</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Space Grotesk', 'sans-serif'],
+          },
+          colors: {
+            slate: {
+              850: '#151e32',
+              900: '#0f172a',
+              950: '#020617',
+            }
+          }
+        }
       }
-      .gradient-border > div {
-        background: white;
-        border-radius: 0.75rem;
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    html {
+      scroll-behavior: smooth;
+    }
+
+    @keyframes gradient {
+      0% {
+        background-position: 0% 50%;
       }
-      ::-webkit-scrollbar { width: 6px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-      ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-    </style>
-<script type="importmap">
-{
-  "imports": {
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.39.0"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    .animate-gradient {
+      animation: gradient 8s ease infinite;
+    }
+  </style>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            // Primary Color: Deep Ocean Navy
+            // Mapping 'indigo' to our new primary to auto-update existing UI
+            indigo: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0f172a', // Main Action Color (Deep Navy)
+              700: '#0f172a', // Hover State
+              800: '#020617', // Active State
+              900: '#020617',
+              950: '#020617',
+            },
+            // Secondary/Neutral Color: Clean Slate/Gray
+            // Mapping 'slate' to a cleaner, slightly cooler gray
+            slate: {
+              50: '#f8fafc', // Backgrounds
+              100: '#f1f5f9',
+              200: '#e2e8f0', // Borders
+              300: '#cbd5e1',
+              400: '#94a3b8',
+              500: '#64748b', // Subtext
+              600: '#475569',
+              700: '#334155', // Headings
+              800: '#1e293b',
+              900: '#0f172a', // Main Text
+              950: '#020617',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Space Grotesk', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    .font-display {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+    }
+
+    .dark-glass {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+    }
+
+    .gradient-border {
+      position: relative;
+      border-radius: 0.75rem;
+      background: linear-gradient(to right, #0f172a, #334155);
+      /* Updated gradient */
+      padding: 1px;
+    }
+
+    .gradient-border>div {
+      background: white;
+      border-radius: 0.75rem;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #e2e8f0;
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #cbd5e1;
+    }
+  </style>
+
+  <link rel="stylesheet" href="/index.css">
 </head>
+
 <body class="bg-[#f8fafc] text-slate-900 antialiased h-full overflow-x-hidden">
-    <div id="root"></div>
-<script type="module" src="/index.tsx"></script>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>

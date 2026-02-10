@@ -16,8 +16,8 @@ export class PaymentService {
         // Simulate network delay
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-        // 90% success rate for simulation
-        const isSuccess = Math.random() > 0.1;
+        // 100% success rate for simulation to avoid confusing the user
+        const isSuccess = true;
         const status = isSuccess ? 'success' : 'failed';
 
         const transaction: Partial<PaymentTransaction> = {

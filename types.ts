@@ -164,6 +164,7 @@ export interface BusinessDecision {
 
 export interface UserProfile {
   userId: string;
+  email?: string; // Added email field
   planType: PlanType;
   dailyFileLimit: number;
   filesProcessedToday: number;
