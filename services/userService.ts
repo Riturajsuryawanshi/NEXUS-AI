@@ -58,11 +58,11 @@ export class UserService {
       .single();
 
     if (error || !data) {
-      if (!data && !error) {
-        // Optimistic recovery: Profile row missing? Create one!
+      // Check if it's a "Row not found" error (PGRST116) or just no data returned
+      if (!data || (error && error.code === 'PGRST116')) {
         console.warn("Profile missing for user. Attempting to create default profile...");
         await this.createDefaultProfile(userId);
-        return; // createDefaultProfile will call fetchProfile again or set currentProfile
+        return;
       }
       console.error('Error fetching profile:', error);
       return;
@@ -80,8 +80,12 @@ export class UserService {
 
     const limits = PLAN_LIMITS[planType];
 
+    // Get Auth User for Email
+    const { data: { user } } = await supabase.auth.getUser();
+
     this.currentUserProfile = {
       userId: data.id,
+      email: user?.email, // Populate email
       planType: planType,
       dailyFileLimit: limits.dailyFileLimit || 3,
       filesProcessedToday: data.files_processed_today,
@@ -168,7 +172,11 @@ export class UserService {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin
+        redirectTo: window.location.origin,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent select_account',
+        }
       }
     });
     if (error) throw error;
@@ -203,6 +211,30 @@ export class UserService {
       this.currentUserProfile.preferences = updatedPrefs;
       this.notify();
     }
+  }
+
+  static async updateProfile(updates: Partial<UserProfile> | any) {
+    if (!this.currentUserProfile) return;
+
+    // Filter out fields that shouldn't be updated directly via this method if necessary
+    // For now, we allow updating mapped fields like display_name
+    const dbUpdates: any = {};
+    if (updates.display_name) dbUpdates.display_name = updates.display_name;
+    if (updates.avatar_url) dbUpdates.avatar_url = updates.avatar_url;
+
+    if (Object.keys(dbUpdates).length === 0) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(dbUpdates)
+      .eq('id', this.currentUserProfile.userId);
+
+    if (error) throw error;
+
+    // Optimistic update
+    if (updates.display_name) this.currentUserProfile.displayName = updates.display_name;
+    if (updates.avatar_url) this.currentUserProfile.avatarUrl = updates.avatar_url;
+    this.notify();
   }
 
   static async updateBusinessContext(context: BusinessContext) {

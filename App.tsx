@@ -11,11 +11,12 @@ import { UserService } from './services/userService';
 import { ClientService } from './services/clientService'; // New
 import { JobRecord, UserProfile, Client } from './types'; // New
 import { JobCard } from './components/JobCard';
+import { ProfileView } from './components/ProfileView';
 
 const App: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activeView, setActiveView] = useState<AppView>('dashboard');
-  const [authMode, setAuthMode] = useState<'landing' | 'login' | 'signup'>('landing');
+  const [authMode, setAuthMode] = useState<'landing' | 'login' | 'signup' | 'app'>('landing');
   const [jobs, setJobs] = useState<JobRecord[]>([]);
   const [activeClient, setActiveClient] = useState<Client | undefined>(undefined); // New
   const [isUploading, setIsUploading] = useState(false);
@@ -24,7 +25,11 @@ const App: React.FC = () => {
   useEffect(() => {
     const unsubscribeAuth = UserService.subscribe(p => {
       setProfile(p);
-      if (p) setAuthMode('landing');
+      // If user logs out, go back to landing
+      if (!p) setAuthMode('landing');
+      // If user logs in, we can stay on landing (user request) or go to app
+      // For now, let's keep them on landing if they were there, or landing if they just logged in?
+      // User said "signin button show the profile", implying they are on landing page.
     });
 
     const unsubscribeJobs = JobService.subscribe(updatedJobs => {
@@ -68,8 +73,29 @@ const App: React.FC = () => {
     }
   };
 
-  if (!profile && authMode === 'landing') return <LandingPage onGetStarted={() => setAuthMode('signup')} onLogin={() => setAuthMode('login')} />;
-  if (!profile && (authMode === 'login' || authMode === 'signup')) return <AuthFlow initialMode={authMode} onSuccess={() => setAuthMode('landing')} />;
+  if (authMode === 'landing') {
+    return (
+      <LandingPage
+        onGetStarted={() => setAuthMode('signup')}
+        onLogin={() => setAuthMode('login')}
+        profile={profile}
+        onEnterApp={() => setAuthMode('app')}
+      />
+    );
+  }
+
+  if (authMode === 'login' || authMode === 'signup') {
+    return (
+      <AuthFlow
+        initialMode={authMode}
+        onSuccess={() => {
+          // User logged in. Go back to landing page as requested?
+          // "sign in button show the profile" -> Landing Page.
+          setAuthMode('landing');
+        }}
+      />
+    );
+  }
 
   // New: If no client selected, show Client List
   if (!activeClient) {
@@ -84,19 +110,19 @@ const App: React.FC = () => {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10">
               <div className="max-w-2xl">
                 <div className="flex items-center gap-4 mb-6">
-                  <h2 className="text-5xl font-display font-black text-slate-900 tracking-tight leading-none uppercase italic">
-                    Nexus <span className="text-indigo-600">Studio</span>
+                  <h2 className="text-5xl font-sans font-black text-slate-900 tracking-tighter leading-none uppercase italic">
+                    Nexus <span className="text-slate-900">Studio</span>
                   </h2>
                   <div className="h-10 w-px bg-slate-200 hidden md:block"></div>
                   <button
                     onClick={() => UserService.updatePreference('learningMode', !profile?.preferences.learningMode)}
-                    className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${profile?.preferences.learningMode ? 'bg-amber-50 border-amber-200 text-amber-600 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-400'}`}
+                    className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all ${profile?.preferences.learningMode ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-900 hover:text-slate-900'}`}
                   >
                     <i className="fas fa-graduation-cap mr-2"></i>
                     {profile?.preferences.learningMode ? 'AI Learning Active' : 'Performance Mode'}
                   </button>
                 </div>
-                <p className="text-slate-500 text-xl font-medium leading-relaxed">
+                <p className="text-slate-600 text-xl font-medium leading-relaxed max-w-lg">
                   Connect your business intelligence to our deterministic neural engine.
                   Get explainable insights grounded in mathematical truth.
                 </p>
@@ -106,9 +132,9 @@ const App: React.FC = () => {
                 <button
                   onClick={() => document.getElementById('file-upload-input')?.click()}
                   disabled={isUploading}
-                  className="group relative px-10 py-5 bg-slate-900 text-white rounded-[2rem] font-bold flex items-center gap-4 hover:bg-indigo-600 hover:shadow-2xl hover:shadow-indigo-500/20 active:scale-95 transition-all disabled:opacity-50 overflow-hidden"
+                  className="group relative px-10 py-5 bg-black text-white rounded-full font-bold flex items-center gap-4 hover:bg-slate-800 hover:shadow-2xl hover:shadow-slate-900/20 active:scale-95 transition-all disabled:opacity-50 overflow-hidden"
                 >
-                  <div className="absolute inset-0 bg-indigo-500/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+                  <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
                   <i className={`fas ${isUploading ? 'fa-circle-notch fa-spin' : 'fa-plus'} relative z-10 text-lg`}></i>
                   <span className="relative z-10 text-lg tracking-tight">
                     {isUploading ? 'Processing Pipeline...' : 'New Analysis Session'}
@@ -143,8 +169,11 @@ const App: React.FC = () => {
         return <MonetizationLab jobs={jobs} profile={profile!} client={activeClient!} view="make-money" />;
       case 'lab-opportunities':
         return <MonetizationLab jobs={jobs} profile={profile!} client={activeClient!} view="opportunities" />;
+
       case 'lab-proof-reports':
         return <MonetizationLab jobs={jobs} profile={profile!} client={activeClient!} view="proof-reports" />;
+      case 'profile':
+        return <ProfileView profile={profile!} />;
       default:
         return null;
     }
