@@ -25,6 +25,17 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onSuccess, initialMode }) =>
     }
   };
 
+  const handleAppleLogin = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await UserService.loginWithApple();
+    } catch (err: any) {
+      setError(err.message || 'Apple authentication failed.');
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || isLoading) return;
@@ -74,6 +85,19 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onSuccess, initialMode }) =>
                 <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="Google" className="w-5 h-5" />
                 <span className="text-sm font-bold text-slate-700">
                   {isLoading ? 'Connecting...' : 'Continue with Google'}
+                </span>
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center gap-3 mt-3">
+              <button
+                onClick={handleAppleLogin}
+                disabled={isLoading}
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-black border border-black rounded-2xl hover:bg-gray-900 transition-all group shadow-sm hover:shadow-md"
+              >
+                <i className="fab fa-apple text-white text-xl"></i>
+                <span className="text-sm font-bold text-white">
+                  {isLoading ? 'Connecting...' : 'Continue with Apple'}
                 </span>
               </button>
             </div>

@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserService } from '../services/userService';
-import { UserProfile } from '../types';
-
-import { Client } from '../types';
+import { UserProfile, Client } from '../types';
+import { PricingModal } from './PricingModal';
+import { CreditBalance } from './CreditBalance';
 
 export type AppView = 'dashboard' | 'settings' | 'lab-make-money' | 'lab-opportunities' | 'lab-proof-reports';
 
@@ -17,6 +17,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, client }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isPricingOpen, setIsPricingOpen] = useState(false); // New State
 
   useEffect(() => {
     const unsubscribe = UserService.subscribe(p => setProfile(p));
@@ -152,6 +153,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChan
           </div>
 
           <div className="flex items-center gap-4">
+            {/* New: Credit Balance */}
+            {profile && (
+              <CreditBalance
+                credits={profile.creditsAvailable || 0}
+                onClick={() => setIsPricingOpen(true)}
+              />
+            )}
+
             <button className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors text-slate-500">
               <i className="far fa-bell"></i>
             </button>
@@ -173,6 +182,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChan
           </div>
         </main>
       </div>
+
+      {/* Pricing Modal */}
+      <PricingModal
+        isOpen={isPricingOpen}
+        onClose={() => setIsPricingOpen(false)}
+        currentUserProfile={profile}
+      />
     </div>
   );
 };

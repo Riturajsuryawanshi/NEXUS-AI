@@ -96,3 +96,64 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- SUBSCRIPTIONS
+create table if not exists public.subscriptions (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) not null,
+  plan_type text check (plan_type in ('free', 'solo', 'pro', 'enterprise')),
+  status text check (status in ('active', 'expired', 'cancelled')),
+  started_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  expires_at timestamp with time zone
+);
+
+-- REPORT CREDITS
+create table if not exists public.report_credits (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) not null,
+  credits_available int default 0,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- PAYMENT TRANSACTIONS
+create table if not exists public.payment_transactions (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) not null,
+  amount numeric,
+  currency text,
+  payment_type text check (payment_type in ('subscription', 'report_credit')),
+  status text check (status in ('success', 'failed', 'pending')),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- RLS for Monetization Tables
+alter table public.subscriptions enable row level security;
+alter table public.report_credits enable row level security;
+alter table public.payment_transactions enable row level security;
+
+-- Subscriptions Policies
+drop policy if exists "Users can view own subscription" on public.subscriptions;
+create policy "Users can view own subscription" on public.subscriptions for select using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own subscription" on public.subscriptions;
+create policy "Users can insert own subscription" on public.subscriptions for insert with check (auth.uid() = user_id); -- For mock/testing
+
+drop policy if exists "Users can update own subscription" on public.subscriptions;
+create policy "Users can update own subscription" on public.subscriptions for update using (auth.uid() = user_id); -- For mock/testing
+
+-- Credits Policies
+drop policy if exists "Users can view own credits" on public.report_credits;
+create policy "Users can view own credits" on public.report_credits for select using (auth.uid() = user_id);
+
+drop policy if exists "Users can update own credits" on public.report_credits;
+create policy "Users can update own credits" on public.report_credits for update using (auth.uid() = user_id); -- For mock/testing
+
+drop policy if exists "Users can insert own credits" on public.report_credits;
+create policy "Users can insert own credits" on public.report_credits for insert with check (auth.uid() = user_id); -- For mock/testing
+
+-- Transactions Policies
+drop policy if exists "Users can view own transactions" on public.payment_transactions;
+create policy "Users can view own transactions" on public.payment_transactions for select using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own transactions" on public.payment_transactions;
+create policy "Users can insert own transactions" on public.payment_transactions for insert with check (auth.uid() = user_id); -- For mock/testing

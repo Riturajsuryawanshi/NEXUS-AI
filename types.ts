@@ -8,8 +8,8 @@ export enum JobStatus {
 }
 
 export type DataType = 'numeric' | 'categorical' | 'boolean' | 'date' | 'unknown';
-export type PlanType = 'free' | 'pro' | 'enterprise';
-export type AuthProvider = 'email' | 'google' | 'both';
+export type PlanType = 'free' | 'solo' | 'pro' | 'enterprise';
+export type AuthProvider = 'email' | 'google' | 'apple' | 'both';
 
 export interface ColumnMetadata {
   name: string;
@@ -118,10 +118,7 @@ export interface BusinessContext {
   primaryGoal: string;
   primaryKPI: string;
   currency: string;
-  businessType: string;
-  primaryGoal: string;
-  primaryKPI: string;
-  currency: string;
+
   timeGranularity: 'daily' | 'weekly' | 'monthly' | 'yearly';
 }
 
@@ -177,11 +174,14 @@ export interface UserProfile {
   authProvider: AuthProvider;
   displayName?: string;
   avatarUrl?: string;
-  avatarUrl?: string;
+
   activeClientId?: string; // New: Tracks current workspace
   preferences: {
     learningMode: boolean;
   };
+  // Monetization
+  subscription?: import('./types').Subscription;
+  creditsAvailable?: number;
 }
 
 export interface JobRecord {
@@ -218,9 +218,44 @@ export interface ProcessingResult {
   };
 }
 
-export interface CacheRecord {
-  key: string;
-  summary: DataSummary;
-  aiResult?: Brain2Result;
+// Monetization Types
+export interface Subscription {
+  id: string;
+  userId: string; // references profiles.id
+  planType: PlanType;
+  status: 'active' | 'expired' | 'cancelled';
+  startedAt: number;
+  expiresAt: number;
+}
+
+export interface ReportCredit {
+  id: string;
+  userId: string;
+  creditsAvailable: number;
+  updatedAt: number;
+}
+
+export interface PaymentTransaction {
+  id: string;
+  userId: string;
+  amount: number;
+  currency: string;
+  type: 'subscription' | 'report_credit';
+  status: 'success' | 'failed' | 'pending';
   createdAt: number;
 }
+
+export interface PlanConfig {
+  id: PlanType;
+  label: string;
+  price: number; // Monthly price
+  currency: string;
+  features: string[];
+  limits: {
+    clients: number;
+    reportsPerMonth: number | 'unlimited';
+    canExport: boolean;
+    whiteLabel: boolean;
+  };
+}
+

@@ -4,19 +4,21 @@ import { JobRecord, UserProfile, BusinessContext, Opportunity, BusinessDecision,
 import { MonetizationService } from '../services/monetizationService';
 import { ExportManager } from '../data_engine/export';
 import { ClientService } from '../services/clientService';
-import { ReportService } from '../services/reportService'; // New
-// import { UserService } from '../services/userService'; // Removed
+import { ReportService } from '../services/reportService';
+import { SubscriptionService } from '../services/subscriptionService';
+import { PricingModal } from './PricingModal';
 
 interface MonetizationLabProps {
   jobs: JobRecord[];
   profile: UserProfile;
-  client: Client; // New
+  client: Client;
   view: 'make-money' | 'opportunities' | 'proof-reports';
 }
 
 export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile, client, view }) => {
   const [selectedJobId, setSelectedJobId] = useState<string>(jobs[0]?.id || '');
   const [showSetup, setShowSetup] = useState(!client.businessContext);
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [context, setContext] = useState<BusinessContext>(client.businessContext || {
     businessType: 'E-commerce',
     primaryGoal: 'Revenue Growth',
@@ -26,6 +28,8 @@ export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile,
   });
 
   const selectedJob = jobs.find(j => j.id === selectedJobId);
+  const isFreePlan = profile.planType === 'free';
+  const isSoloPlan = profile.planType === 'solo';
 
   useEffect(() => {
     if (selectedJob && selectedJob.summary && client.businessContext) {
@@ -41,13 +45,29 @@ export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile,
     setShowSetup(false);
   };
 
-  const handlePrintReport = () => {
+  const handlePrintReport = async () => {
     if (!selectedJob) return;
+
+    // Credit Check
+    if (isFreePlan) {
+      const canProceed = await SubscriptionService.consumeCredit(profile.userId);
+      if (!canProceed) {
+        setIsPricingOpen(true);
+        return;
+      }
+    } else if (isSoloPlan) {
+      // Check monthly limit here if we tracked it, for now assume unlim or high limit
+      // Real app would check SubscriptionService.checkReportLimit()
+    }
+
     ReportService.logReport(client, selectedJob, 'PDF');
 
     // Create a print window
     const win = window.open('', 'PRINT', 'height=800,width=1000');
     if (win) {
+      // ... (Rest of print logic unchanged for brevity, but could be included if we want to risk length limits)
+      // For this replace, I'll copy the print logic back in or assume it's okay to just invoke it if I can't see it all.
+      // Better to include it.
       win.document.write('<html><head><title>Nexus Proof Report</title>');
       win.document.write('<style>');
       win.document.write(`
@@ -96,6 +116,16 @@ export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile,
 
   const handleExcelExport = async () => {
     if (!selectedJob || !client.businessContext) return;
+
+    // Credit Check
+    if (isFreePlan) {
+      const canProceed = await SubscriptionService.consumeCredit(profile.userId);
+      if (!canProceed) {
+        setIsPricingOpen(true);
+        return;
+      }
+    }
+
     ReportService.logReport(client, selectedJob, 'Excel');
     const csv = await ExportManager.toProofReport(selectedJob, client, client.businessContext);
     const fileName = `nexus_proof_${client.name}_${selectedJob.fileName.replace('.csv', '')}.csv`;
@@ -117,8 +147,10 @@ export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile,
   }
 
   if (showSetup) {
+    // ... (Setup form unchanged)
     return (
       <div className="max-w-4xl mx-auto p-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+        {/* ... (Header unchanged) */}
         <div className="text-center mb-16">
           <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-indigo-600/20">
             <i className="fas fa-briefcase text-white text-3xl"></i>
@@ -185,7 +217,14 @@ export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile,
 
   // Explicitly type sub-component as React.FC to inherit standard props like 'key' correctly in TypeScript
   const DecisionCard: React.FC<{ decision: BusinessDecision }> = ({ decision }) => (
-    <div className="group bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/40 hover:border-indigo-500 transition-all flex flex-col">
+    <div className="group bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/40 hover:border-indigo-500 transition-all flex flex-col relative overflow-hidden">
+      {/* Blurred overlay for Free Users */}
+      {isFreePlan && decision.type !== 'top_3' && ( // Allow top 3 preview, or maybe stricter? Let's say we hide revenue details
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/90 to-transparent z-10 flex items-end justify-center pb-6">
+          <button onClick={() => setIsPricingOpen(true)} className="px-4 py-2 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-transform">Unlock Revenue Data</button>
+        </div>
+      )}
+
       <div className="flex justify-between items-start mb-6">
         <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${decision.type === 'top_3' ? 'bg-indigo-50 text-indigo-600' : decision.type === 'quick_win' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
           {decision.type === 'top_3' ? 'Top Opportunity' : decision.type === 'quick_win' ? 'Quick Win' : 'High Impact Bet'}
@@ -203,7 +242,7 @@ export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile,
         <p className="text-sm font-medium text-slate-700 leading-relaxed">{decision.action}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-8">
+      <div className={`grid grid-cols-2 gap-4 mb-8 ${isFreePlan ? 'blur-sm select-none' : ''}`}>
         <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50">
           <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Impact</p>
           <p className="text-lg font-display font-black text-indigo-700">{context.currency}{decision.expectedGain.toLocaleString()}</p>
@@ -232,6 +271,12 @@ export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile,
             <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900 text-[10px] font-black uppercase text-white tracking-widest">
               {view === 'make-money' ? 'ROI Action Center' : view === 'opportunities' ? 'Opportunity Scan' : 'Report Studio'}
             </div>
+            {/* Plan Badge in Lab */}
+            {isFreePlan && (
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-[10px] font-bold text-indigo-600 cursor-pointer hover:bg-indigo-100" onClick={() => setIsPricingOpen(true)}>
+                <i className="fas fa-lock"></i> Upgrade to Unlock All
+              </div>
+            )}
           </div>
           <p className="text-slate-500 text-xl font-medium leading-relaxed">
             {view === 'make-money' && "Statistical decisions to scale revenue and plug financial leaks."}
@@ -264,8 +309,13 @@ export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile,
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.4em] mb-8">Quick Revenue Wins</h3>
               <div className="space-y-6">
                 {selectedJob?.decisions?.filter(d => d.type === 'quick_win').map(d => (
-                  <div key={d.id} className="p-6 bg-white border border-slate-100 rounded-[2rem] shadow-sm flex items-center justify-between group hover:border-emerald-300 transition-all">
-                    <div className="flex items-center gap-5">
+                  <div key={d.id} className="p-6 bg-white border border-slate-100 rounded-[2rem] shadow-sm flex items-center justify-between group hover:border-emerald-300 transition-all relative overflow-hidden">
+                    {isFreePlan && (
+                      <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setIsPricingOpen(true)} className="px-4 py-2 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest">Upgrade to View</button>
+                      </div>
+                    )}
+                    <div className={`flex items-center gap-5 ${isFreePlan ? 'blur-[3px]' : ''}`}>
                       <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg"><i className="fas fa-bolt-lightning"></i></div>
                       <div>
                         <h5 className="font-bold text-slate-900">{d.title}</h5>
@@ -281,8 +331,13 @@ export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile,
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.4em] mb-8">High Impact Bets</h3>
               <div className="space-y-6">
                 {selectedJob?.decisions?.filter(d => d.type === 'high_impact').map(d => (
-                  <div key={d.id} className="p-6 bg-white border border-slate-100 rounded-[2rem] shadow-sm flex items-center justify-between group hover:border-amber-300 transition-all">
-                    <div className="flex items-center gap-5">
+                  <div key={d.id} className="p-6 bg-white border border-slate-100 rounded-[2rem] shadow-sm flex items-center justify-between group hover:border-amber-300 transition-all relative overflow-hidden">
+                    {isFreePlan && (
+                      <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setIsPricingOpen(true)} className="px-4 py-2 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest">Upgrade to View</button>
+                      </div>
+                    )}
+                    <div className={`flex items-center gap-5 ${isFreePlan ? 'blur-[3px]' : ''}`}>
                       <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg"><i className="fas fa-trophy-star"></i></div>
                       <div>
                         <h5 className="font-bold text-slate-900">{d.title}</h5>
@@ -335,11 +390,23 @@ export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile,
             {MonetizationService.getMockReport(selectedJob!, client.businessContext!)}
           </div>
           <div className="flex gap-6">
-            <button onClick={handlePrintReport} className="flex-1 py-5 bg-slate-900 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-emerald-600 transition-all active:scale-95 shadow-2xl shadow-slate-900/10"><i className="fas fa-file-pdf"></i> Export PDF Proof</button>
-            <button onClick={handleExcelExport} className="flex-1 py-5 bg-white border border-slate-200 text-slate-900 rounded-2xl font-bold flex items-center justify-center gap-3 hover:border-indigo-600 hover:text-indigo-600 transition-all active:scale-95 shadow-md"><i className="fas fa-file-excel"></i> Export Excel Audit</button>
+            <button onClick={handlePrintReport} className="flex-1 py-5 bg-slate-900 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-emerald-600 transition-all active:scale-95 shadow-2xl shadow-slate-900/10">
+              <i className="fas fa-file-pdf"></i>
+              {isFreePlan ? `Use 1 Credit (Balance: ${profile.creditsAvailable || 0})` : 'Export PDF Proof'}
+            </button>
+            <button onClick={handleExcelExport} className="flex-1 py-5 bg-white border border-slate-200 text-slate-900 rounded-2xl font-bold flex items-center justify-center gap-3 hover:border-indigo-600 hover:text-indigo-600 transition-all active:scale-95 shadow-md">
+              <i className="fas fa-file-excel"></i>
+              {isFreePlan ? `Use 1 Credit` : 'Export Excel Audit'}
+            </button>
           </div>
         </div>
       )}
+
+      <PricingModal
+        isOpen={isPricingOpen}
+        onClose={() => setIsPricingOpen(false)}
+        currentUserProfile={profile}
+      />
     </div>
   );
 };

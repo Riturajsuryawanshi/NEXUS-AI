@@ -1,8 +1,10 @@
 import { supabase } from './supabaseClient';
 import { UserProfile, PlanType, AuthProvider, BusinessContext } from '../types';
+import { SubscriptionService } from './subscriptionService';
 
 const PLAN_LIMITS: Record<PlanType, Partial<UserProfile>> = {
   free: { dailyFileLimit: 3, aiCallsRemaining: 5, aiTokensLimitDaily: 2000 },
+  solo: { dailyFileLimit: 10, aiCallsRemaining: 20, aiTokensLimitDaily: 10000 },
   pro: { dailyFileLimit: 50, aiCallsRemaining: 50, aiTokensLimitDaily: 20000 },
   enterprise: { dailyFileLimit: 1000, aiCallsRemaining: 1000, aiTokensLimitDaily: 500000 },
 };
@@ -66,21 +68,44 @@ export class UserService {
       return;
     }
 
+    // Fetch Subscription & Credits
+    const sub = await SubscriptionService.getCurrentSubscription(userId);
+    const credits = await SubscriptionService.getCredits(userId);
+
+    // Plan Limits Override based on Subscription
+    let planType: PlanType = (data.plan_type as PlanType) || 'free';
+    if (sub && sub.status === 'active') {
+      planType = sub.planType;
+    }
+
+    const limits = PLAN_LIMITS[planType];
+
     this.currentUserProfile = {
       userId: data.id,
-      planType: data.plan_type as PlanType,
-      dailyFileLimit: data.daily_file_limit,
+      planType: planType,
+      dailyFileLimit: limits.dailyFileLimit || 3,
       filesProcessedToday: data.files_processed_today,
-      aiCallsRemaining: data.ai_calls_remaining,
-      aiTokensUsedToday: 0, // Not persisted in this simple schema yet, or reset daily
-      aiTokensLimitDaily: 2000, // Hardcoded for now based on plan (could be in DB)
-      lastUsageResetAt: new Date(data.created_at).getTime(), // Using created_at for now
-      authProvider: 'email', // derived?
+      aiCallsRemaining: limits.aiCallsRemaining || 5, // This logic might need to be split if we track usage in DB vs Plan limit
+      // For now, we trust the DB 'ai_calls_remaining' but we should probably reset it daily based on plan
+
+      aiTokensUsedToday: 0,
+      aiTokensLimitDaily: limits.aiTokensLimitDaily || 2000,
+      lastUsageResetAt: new Date(data.created_at).getTime(),
+      authProvider: 'email',
       displayName: data.display_name,
       avatarUrl: data.avatar_url,
-      preferences: data.preferences || { learningMode: true }
+      preferences: data.preferences || { learningMode: true },
+      // New:
+      subscription: sub || undefined,
+      creditsAvailable: credits
     };
     this.notify();
+  }
+
+  static async refreshProfile() {
+    if (this.currentUserProfile) {
+      await this.fetchProfile(this.currentUserProfile.userId);
+    }
   }
 
   private static async createDefaultProfile(userId: string) {
@@ -140,11 +165,21 @@ export class UserService {
   }
 
   static async loginWithGoogle(): Promise<void> {
-    // Client-side Google auth with Supabase usually involves redirection.
-    // nexus-dataanalyst UI might have a button that handles this.
-    // For now, we'll assume standard Supabase signInWithOAuth
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+    if (error) throw error;
+  }
+
+  static async loginWithApple(): Promise<void> {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'apple',
+      options: {
+        redirectTo: window.location.origin
+      }
     });
     if (error) throw error;
   }
