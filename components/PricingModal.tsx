@@ -16,31 +16,62 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, cur
 
     const currentPlan = currentUserProfile?.planType || 'free';
 
-    const handleUpgrade = async (planType: PlanType) => {
+    const handlePayment = async (type: 'subscription' | 'credit_pack', itemId: string) => {
         setLoading(true);
         try {
-            await SubscriptionService.upgradePlan(currentUserProfile!.userId, planType);
-            alert(`Successfully upgraded to ${PLANS[planType].label}!`);
-            onClose();
+            let orderData;
+            if (type === 'subscription') {
+                orderData = await SubscriptionService.createSubscriptionOrder(itemId as PlanType);
+            } else {
+                orderData = await SubscriptionService.createCreditPurchaseOrder(itemId);
+            }
+
+            if (!orderData) {
+                // Should not happen for paid plans
+                alert('This plan is free or unavailable.');
+                setLoading(false);
+                return;
+            }
+
+            const options = {
+                key: orderData.keyId,
+                amount: orderData.amount,
+                currency: orderData.currency,
+                name: 'Nexus Analyst',
+                description: type === 'subscription' ? `Upgrade to ${PLANS[itemId as PlanType]?.label || itemId}` : `Credit Pack: ${CREDIT_PACKS.find(p => p.id === itemId)?.label}`,
+                order_id: orderData.orderId,
+                handler: function (response: any) {
+                    alert(`Payment Successful! Payment ID: ${response.razorpay_payment_id}`);
+                    // In a real app, we might call a verify endpoint here
+                    onClose();
+                    window.location.reload(); // Simple reload to fetch new state
+                },
+                prefill: {
+                    name: currentUserProfile?.displayName || '',
+                    email: '', // We could fetch email if we had it in profile
+                    contact: ''
+                },
+                theme: {
+                    color: '#6366f1'
+                }
+            };
+
+            const rzp1 = new (window as any).Razorpay(options);
+            rzp1.on('payment.failed', function (response: any) {
+                alert(`Payment Failed: ${response.error.description}`);
+            });
+            rzp1.open();
+
         } catch (error: any) {
-            alert(`Upgrade failed: ${error.message}`);
+            console.error('Payment Error:', error);
+            alert(`Payment initialization failed: ${error.message}`);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleBuyCredits = async (packId: string) => {
-        setLoading(true);
-        try {
-            await SubscriptionService.purchaseCredits(currentUserProfile!.userId, packId);
-            alert('Credits purchased successfully!');
-            onClose();
-        } catch (error: any) {
-            alert(`Purchase failed: ${error.message}`);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const handleUpgrade = (planType: PlanType) => handlePayment('subscription', planType);
+    const handleBuyCredits = (packId: string) => handlePayment('credit_pack', packId);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -106,10 +137,10 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, cur
                                             onClick={() => handleUpgrade(planKey)}
                                             disabled={isCurrent || loading}
                                             className={`w-full py-4 rounded-xl font-bold transition-all ${isCurrent
-                                                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                                    : isPro
-                                                        ? 'bg-slate-900 text-white hover:bg-indigo-600 shadow-lg hover:shadow-indigo-500/20'
-                                                        : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                                                ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                                : isPro
+                                                    ? 'bg-slate-900 text-white hover:bg-indigo-600 shadow-lg hover:shadow-indigo-500/20'
+                                                    : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
                                                 }`}
                                         >
                                             {loading ? 'Processing...' : isCurrent ? 'Active Plan' : `Upgrade to ${plan.label}`}

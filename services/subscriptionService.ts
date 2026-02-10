@@ -87,62 +87,17 @@ export class SubscriptionService {
         return data?.credits_available || 0;
     }
 
-    static async upgradePlan(userId: string, planType: PlanType): Promise<void> {
+    static async createSubscriptionOrder(planType: PlanType): Promise<any> {
         const plan = PLANS[planType];
         if (plan.price > 0) {
-            await PaymentService.processPayment(userId, plan.price, plan.currency, 'subscription');
+            return await PaymentService.createOrder('subscription', planType);
         }
-
-        // Deactivate old active subscriptions
-        await supabase
-            .from('subscriptions')
-            .update({ status: 'cancelled' })
-            .eq('user_id', userId)
-            .eq('status', 'active');
-
-        // Create new subscription
-        const { error } = await supabase
-            .from('subscriptions')
-            .insert([{
-                user_id: userId,
-                plan_type: planType,
-                status: 'active',
-                started_at: new Date().toISOString(),
-                expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // +30 days
-            }]);
-
-        if (error) throw error;
-
-        // Refresh user profile/context
-        // In a real app we might trigger a webhook or client refresh
-        UserService.refreshProfile();
+        // Free plan logic if needed, or handle separately
+        return null;
     }
 
-    static async purchaseCredits(userId: string, packId: string): Promise<void> {
-        const pack = CREDIT_PACKS.find(p => p.id === packId);
-        if (!pack) throw new Error('Invalid credit pack');
-
-        await PaymentService.processPayment(userId, pack.price, 'INR', 'report_credit');
-
-        // Upsert credits
-        // This is race-condition prone in specialized cases but fine for MVP
-        // Better to use an RPC 'increment_credits'
-
-        // Check if row exists
-        const { data: existing } = await supabase.from('report_credits').select('*').eq('user_id', userId).single();
-
-        if (existing) {
-            await supabase
-                .from('report_credits')
-                .update({ credits_available: existing.credits_available + pack.credits, updated_at: new Date().toISOString() })
-                .eq('user_id', userId);
-        } else {
-            await supabase
-                .from('report_credits')
-                .insert([{ user_id: userId, credits_available: pack.credits }]);
-        }
-
-        UserService.refreshProfile();
+    static async createCreditPurchaseOrder(packId: string): Promise<any> {
+        return await PaymentService.createOrder('credit_pack', packId);
     }
 
     static async consumeCredit(userId: string): Promise<boolean> {
