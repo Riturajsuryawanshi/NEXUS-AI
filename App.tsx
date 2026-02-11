@@ -5,7 +5,8 @@ import { LandingPage } from './components/LandingPage';
 import { AuthFlow } from './components/AuthFlow';
 import { Settings } from './components/Settings';
 import { MonetizationLab } from './components/MonetizationLab';
-import { ClientList } from './components/ClientList'; // New
+import { ClientList } from './components/ClientList';
+import { ReviewIntelligence } from './components/ReviewIntelligence';
 import { JobService } from './services/jobService';
 import { UserService } from './services/userService';
 import { ClientService } from './services/clientService'; // New
@@ -129,23 +130,23 @@ const App: React.FC = () => {
     switch (activeView) {
       case 'dashboard':
         return (
-          <div className="max-w-[1600px] mx-auto p-12 space-y-16">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10">
+          <div className="max-w-[1600px] mx-auto p-8 space-y-12">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
               <div className="max-w-2xl">
-                <div className="flex items-center gap-4 mb-6">
-                  <h2 className="text-5xl font-sans font-black text-slate-900 tracking-tighter leading-none uppercase italic">
+                <div className="flex items-center gap-3 mb-4">
+                  <h2 className="text-3xl font-sans font-black text-slate-900 tracking-tight">
                     Nexus <span className="text-slate-900">Studio</span>
                   </h2>
-                  <div className="h-10 w-px bg-slate-200 hidden md:block"></div>
+                  <div className="h-8 w-px bg-slate-200 hidden md:block"></div>
                   <button
                     onClick={() => UserService.updatePreference('learningMode', !profile?.preferences.learningMode)}
-                    className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all ${profile?.preferences.learningMode ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-900 hover:text-slate-900'}`}
+                    className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border ${profile?.preferences.learningMode ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-900'}`}
                   >
-                    <i className="fas fa-graduation-cap mr-2"></i>
-                    {profile?.preferences.learningMode ? 'AI Learning Active' : 'Performance Mode'}
+                    <i className="fas fa-graduation-cap mr-1.5"></i>
+                    {profile?.preferences.learningMode ? 'AI Learning' : 'Performance'}
                   </button>
                 </div>
-                <p className="text-slate-600 text-xl font-medium leading-relaxed max-w-lg">
+                <p className="text-slate-600 text-base leading-relaxed max-w-lg">
                   Connect your business intelligence to our deterministic neural engine.
                   Get explainable insights grounded in mathematical truth.
                 </p>
@@ -155,18 +156,18 @@ const App: React.FC = () => {
                 <button
                   onClick={() => document.getElementById('file-upload-input')?.click()}
                   disabled={isUploading}
-                  className="group relative px-10 py-5 bg-black text-white rounded-full font-bold flex items-center gap-4 hover:bg-slate-800 hover:shadow-2xl hover:shadow-slate-900/20 active:scale-95 transition-all disabled:opacity-50 overflow-hidden"
+                  className="px-6 py-3 bg-black text-white rounded-xl font-bold flex items-center gap-2 hover:bg-slate-800 disabled:opacity-50"
                 >
-                  <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
-                  <i className={`fas ${isUploading ? 'fa-circle-notch fa-spin' : 'fa-plus'} relative z-10 text-lg`}></i>
-                  <span className="relative z-10 text-lg tracking-tight">
-                    {isUploading ? 'Processing Pipeline...' : 'New Analysis Session'}
+                  <i className={`fas ${isUploading ? 'fa-circle-notch fa-spin' : 'fa-plus'} text-sm`}></i>
+                  <span className="text-sm">
+                    {isUploading ? 'Processing...' : 'New Analysis'}
                   </span>
                 </button>
                 <input id="file-upload-input" type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
               </div>
             </div>
 
+<<<<<<< HEAD
             <div className="flex flex-col gap-16">
               {/* Review Intelligence Module */}
               <ReviewIntelligence key="review-intel-module" />
@@ -187,6 +188,16 @@ const App: React.FC = () => {
                 </div>
               )}
             </div>
+=======
+            {/* Review Intelligence Section - Moved up for visibility */}
+            {profile && <ReviewIntelligence profile={profile} />}
+
+            {jobs.length > 0 && (
+              <div className="space-y-12">
+                {jobs.filter(job => job.clientId === activeClient?.id).map(job => <JobCard key={job.id} job={job} />)}
+              </div>
+            )}
+>>>>>>> 3172753 (finally)
           </div>
         );
       case 'settings':

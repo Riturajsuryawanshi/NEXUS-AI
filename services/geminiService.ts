@@ -152,6 +152,7 @@ export class GeminiService {
       return { id: crypto.randomUUID(), role: 'assistant', content: "I'm analyzing the data frames, but encountered a processing error. Could you rephrase your question?", timestamp: Date.now() };
     }
   }
+<<<<<<< HEAD
   static async generateContent(prompt: string): Promise<string> {
     const ai = this.getAI();
     const model = 'gemini-1.5-flash';
@@ -161,6 +162,18 @@ export class GeminiService {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
         responseMimeType: "text/plain",
+=======
+
+  static async chat(prompt: string): Promise<string> {
+    const ai = this.getAI();
+    const model = 'gemini-3-flash-preview';
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        temperature: 0.3,
+>>>>>>> 3172753 (finally)
       }
     });
 
