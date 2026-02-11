@@ -260,3 +260,36 @@ export interface PlanConfig {
   };
 }
 
+
+// Review Intelligence Types
+export interface ReviewCluster {
+  theme: string;
+  frequency_percentage: number;
+  sentiment: 'positive' | 'negative' | 'mixed';
+  key_complaints_or_praises: string[];
+  business_impact_estimate: string;
+}
+
+export interface RevenueLeak {
+  issue: string;
+  potential_business_risk: string;
+  recommended_fix: string;
+}
+
+export interface UpsellOpportunity {
+  opportunity: string;
+  supporting_review_pattern: string;
+}
+
+export interface ReviewAudit {
+  business_summary: {
+    name: string;
+    rating: number;
+    total_reviews: number;
+    place_id: string;
+  };
+  review_clusters: ReviewCluster[];
+  revenue_leak_indicators: RevenueLeak[];
+  upsell_opportunities: UpsellOpportunity[];
+  generatedAt: number;
+}

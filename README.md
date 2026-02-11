@@ -8,6 +8,22 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/drive/1uX0FYz-GpjG4ArwbKV7phPMeVqvKc66L
 
+## ⭐ NEW: Review Intelligence Feature
+
+**Turn Public Reviews Into Revenue Insights**
+
+Paste any Google Maps business link and instantly generate:
+- 📊 Sentiment analysis & review clusters
+- 💰 Revenue leak detection
+- 🚀 Upsell opportunities
+- 📄 Client-ready audit reports
+
+**Perfect for**: Freelancers, agencies, and growth operators looking to monetize business insights.
+
+👉 **[Read the Complete Guide](./REVIEW_INTELLIGENCE_SUMMARY.md)**
+
+---
+
 ## Run Locally
 
 **Prerequisites:**  Node.js

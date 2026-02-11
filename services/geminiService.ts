@@ -17,7 +17,7 @@ export class GeminiService {
 
   static async generateInsights(summary: DataSummary): Promise<Brain2Result> {
     const ai = this.getAI();
-    const model = 'gemini-3-flash-preview';
+    const model = 'gemini-1.5-flash';
 
     const systemInstruction = `You are Brain 2: The Narrative Reasoning Layer. 
     Interpret the JSON summary provided.
@@ -55,7 +55,7 @@ export class GeminiService {
 
   static async designDashboard(summary: DataSummary): Promise<any> {
     const ai = this.getAI();
-    const model = 'gemini-3-flash-preview';
+    const model = 'gemini-1.5-flash';
 
     const systemInstruction = `You are a Senior Dashboard Architect.
     Based on the column metadata and statistics, design the most effective visual layout.
@@ -105,7 +105,7 @@ export class GeminiService {
 
   static async chatWithData(summary: DataSummary, history: ChatMessage[], message: string): Promise<ChatMessage> {
     const ai = this.getAI();
-    const model = 'gemini-3-flash-preview';
+    const model = 'gemini-1.5-flash';
 
     const systemInstruction = `You are the Nexus Lead Data Analyst. 
     You are in a live consultation with a client.
@@ -151,5 +151,19 @@ export class GeminiService {
     } catch (e) {
       return { id: crypto.randomUUID(), role: 'assistant', content: "I'm analyzing the data frames, but encountered a processing error. Could you rephrase your question?", timestamp: Date.now() };
     }
+  }
+  static async generateContent(prompt: string): Promise<string> {
+    const ai = this.getAI();
+    const model = 'gemini-1.5-flash';
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "text/plain",
+      }
+    });
+
+    return response.text;
   }
 }

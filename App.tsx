@@ -12,6 +12,7 @@ import { ClientService } from './services/clientService'; // New
 import { JobRecord, UserProfile, Client } from './types'; // New
 import { JobCard } from './components/JobCard';
 import { ProfileView } from './components/ProfileView';
+import { ReviewIntelligence } from './components/ReviewIntelligence'; // New
 
 const App: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -25,11 +26,32 @@ const App: React.FC = () => {
   useEffect(() => {
     const unsubscribeAuth = UserService.subscribe(p => {
       setProfile(p);
-      // If user logs out, go back to landing
-      if (!p) setAuthMode('landing');
-      // If user logs in, we can stay on landing (user request) or go to app
-      // For now, let's keep them on landing if they were there, or landing if they just logged in?
-      // User said "signin button show the profile", implying they are on landing page.
+
+      if (p) {
+        // User is logged in
+        // Generate a slug for the URL: usage display name or email prefix
+        const nameSlug = p.displayName
+          ? p.displayName.toLowerCase().replace(/\s+/g, '')
+          : p.email?.split('@')[0] || 'user';
+
+        // Update URL to /slug if not already there
+        const currentPath = window.location.pathname;
+        if (currentPath === '/' || currentPath === '/login') {
+          window.history.pushState({}, '', `/${nameSlug}`);
+        }
+
+        // If we are on landing or login, switch to App view
+        // Unconditionally switch to app if user is present
+        setAuthMode('app');
+
+      } else {
+        // User is logged out
+        setAuthMode('landing');
+        // Reset URL to root
+        if (window.location.pathname !== '/') {
+          window.history.pushState({}, '', '/');
+        }
+      }
     });
 
     const unsubscribeJobs = JobService.subscribe(updatedJobs => {
@@ -89,9 +111,10 @@ const App: React.FC = () => {
       <AuthFlow
         initialMode={authMode}
         onSuccess={() => {
-          // User logged in. Go back to landing page as requested?
-          // "sign in button show the profile" -> Landing Page.
-          setAuthMode('landing');
+          // User logged in. Go to app.
+          // The subscription already handles this, but explicitly setting it doesn't hurt.
+          // We must NOT set it back to 'landing' as previously implemented.
+          setAuthMode('app');
         }}
       />
     );
@@ -145,6 +168,9 @@ const App: React.FC = () => {
             </div>
 
             <div className="flex flex-col gap-16">
+              {/* Review Intelligence Module */}
+              <ReviewIntelligence key="review-intel-module" />
+
               {jobs.length === 0 ? (
                 <div className="bg-white rounded-[4rem] border-2 border-dashed border-slate-100 py-48 text-center shadow-sm">
                   <div className="w-24 h-24 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 text-slate-200 shadow-inner">
