@@ -9,70 +9,69 @@ interface PricingModalProps {
 }
 
 export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, currentUserProfile }) => {
-    const [loadingId, setLoadingId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
     const [view, setView] = useState<'plans' | 'credits'>('plans');
 
     if (!isOpen) return null;
 
     const currentPlan = currentUserProfile?.planType || 'free';
 
-    const handlePayment = async (itemId: string, itemType: 'plan' | 'credit', amount: number, currency: string) => {
-        setLoadingId(itemId);
+    const handlePayment = async (type: 'subscription' | 'credit_pack', itemId: string) => {
+        setLoading(true);
         try {
-            // Mocking Razorpay Opening
+            let orderData;
+            if (type === 'subscription') {
+                orderData = await SubscriptionService.createSubscriptionOrder(itemId as PlanType);
+            } else {
+                orderData = await SubscriptionService.createCreditPurchaseOrder(itemId);
+            }
+
+            if (!orderData) {
+                // Should not happen for paid plans
+                alert('This plan is free or unavailable.');
+                setLoading(false);
+                return;
+            }
+
             const options = {
-                key: "YOUR_RAZORPAY_KEY", // Enter the Key ID generated from the Dashboard
-                amount: amount * 100, // Amount is in currency subunits. Default currency is INR. Hence, 50000 refers to 50000 paise
-                currency: currency,
-                name: "NexusAnalyst",
-                description: `Payment for ${itemId}`,
-                image: "https://example.com/your_logo",
-                handler: async function (response: any) {
-                    // alert(response.razorpay_payment_id);
-                    // simulate success backend call
-                    if (itemType === 'plan') {
-                        await SubscriptionService.upgradePlan(currentUserProfile!.userId, itemId as PlanType);
-                        alert(`Successfully upgraded to ${PLANS[itemId as PlanType].label}!`);
-                    } else {
-                        await SubscriptionService.purchaseCredits(currentUserProfile!.userId, itemId);
-                        alert('Credits purchased successfully!');
-                    }
+                key: orderData.keyId,
+                amount: orderData.amount,
+                currency: orderData.currency,
+                name: 'Nexus Analyst',
+                description: type === 'subscription' ? `Upgrade to ${PLANS[itemId as PlanType]?.label || itemId}` : `Credit Pack: ${CREDIT_PACKS.find(p => p.id === itemId)?.label}`,
+                order_id: orderData.orderId,
+                handler: function (response: any) {
+                    alert(`Payment Successful! Payment ID: ${response.razorpay_payment_id}`);
+                    // In a real app, we might call a verify endpoint here
                     onClose();
+                    window.location.reload(); // Simple reload to fetch new state
                 },
                 prefill: {
-                    name: currentUserProfile?.displayName || "",
-                    email: currentUserProfile?.email || "",
-                    contact: ""
+                    name: currentUserProfile?.displayName || '',
+                    email: '', // We could fetch email if we had it in profile
+                    contact: ''
                 },
                 theme: {
-                    color: "#4f46e5"
+                    color: '#6366f1'
                 }
             };
 
-            // Check if Razorpay is loaded
-            if ((window as any).Razorpay) {
-                const rzp1 = new (window as any).Razorpay(options);
-                rzp1.open();
-            } else {
-                // Fallback if Razorpay script fails or for dev testing without script
-                console.warn("Razorpay SDK not loaded. Simulating direct success.");
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                if (itemType === 'plan') {
-                    await SubscriptionService.upgradePlan(currentUserProfile!.userId, itemId as PlanType);
-                    alert(`Successfully upgraded to ${PLANS[itemId as PlanType].label}!`);
-                } else {
-                    await SubscriptionService.purchaseCredits(currentUserProfile!.userId, itemId);
-                    alert('Credits purchased successfully!');
-                }
-                onClose();
-            }
+            const rzp1 = new (window as any).Razorpay(options);
+            rzp1.on('payment.failed', function (response: any) {
+                alert(`Payment Failed: ${response.error.description}`);
+            });
+            rzp1.open();
 
         } catch (error: any) {
-            alert(`Payment failed: ${error.message}`);
+            console.error('Payment Error:', error);
+            alert(`Payment initialization failed: ${error.message}`);
         } finally {
-            setLoadingId(null);
+            setLoading(false);
         }
     };
+
+    const handleUpgrade = (planType: PlanType) => handlePayment('subscription', planType);
+    const handleBuyCredits = (packId: string) => handlePayment('credit_pack', packId);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -135,8 +134,8 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, cur
                                         </ul>
 
                                         <button
-                                            onClick={() => handlePayment(planKey, 'plan', plan.price, plan.currency)}
-                                            disabled={isCurrent || loadingId !== null}
+                                            onClick={() => handleUpgrade(planKey)}
+                                            disabled={isCurrent || loading}
                                             className={`w-full py-4 rounded-xl font-bold transition-all ${isCurrent
                                                 ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                                 : isPro
@@ -144,7 +143,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, cur
                                                     : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
                                                 }`}
                                         >
-                                            {loadingId === planKey ? 'Processing...' : isCurrent ? 'Active Plan' : `Upgrade to ${plan.label}`}
+                                            {loading ? 'Processing...' : isCurrent ? 'Active Plan' : `Upgrade to ${plan.label}`}
                                         </button>
                                     </div>
                                 );
@@ -175,11 +174,11 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, cur
                                     </div>
 
                                     <button
-                                        onClick={() => handlePayment(pack.id, 'credit', pack.price, 'INR')}
-                                        disabled={loadingId !== null}
+                                        onClick={() => handleBuyCredits(pack.id)}
+                                        disabled={loading}
                                         className="w-full py-4 rounded-xl font-bold bg-white border-2 border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white transition-all"
                                     >
-                                        {loadingId === pack.id ? 'Processing...' : 'Buy Pack'}
+                                        {loading ? 'Processing...' : 'Buy Pack'}
                                     </button>
                                 </div>
                             ))}

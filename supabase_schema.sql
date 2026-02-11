@@ -135,25 +135,10 @@ alter table public.payment_transactions enable row level security;
 drop policy if exists "Users can view own subscription" on public.subscriptions;
 create policy "Users can view own subscription" on public.subscriptions for select using (auth.uid() = user_id);
 
-drop policy if exists "Users can insert own subscription" on public.subscriptions;
-create policy "Users can insert own subscription" on public.subscriptions for insert with check (auth.uid() = user_id); -- For mock/testing
-
-drop policy if exists "Users can update own subscription" on public.subscriptions;
-create policy "Users can update own subscription" on public.subscriptions for update using (auth.uid() = user_id); -- For mock/testing
-
 -- Credits Policies
 drop policy if exists "Users can view own credits" on public.report_credits;
 create policy "Users can view own credits" on public.report_credits for select using (auth.uid() = user_id);
 
-drop policy if exists "Users can update own credits" on public.report_credits;
-create policy "Users can update own credits" on public.report_credits for update using (auth.uid() = user_id); -- For mock/testing
-
-drop policy if exists "Users can insert own credits" on public.report_credits;
-create policy "Users can insert own credits" on public.report_credits for insert with check (auth.uid() = user_id); -- For mock/testing
-
 -- Transactions Policies
 drop policy if exists "Users can view own transactions" on public.payment_transactions;
 create policy "Users can view own transactions" on public.payment_transactions for select using (auth.uid() = user_id);
-
-drop policy if exists "Users can insert own transactions" on public.payment_transactions;
-create policy "Users can insert own transactions" on public.payment_transactions for insert with check (auth.uid() = user_id); -- For mock/testing
