@@ -13,7 +13,6 @@ import { ClientService } from './services/clientService'; // New
 import { JobRecord, UserProfile, Client } from './types'; // New
 import { JobCard } from './components/JobCard';
 import { ProfileView } from './components/ProfileView';
-import { ReviewIntelligence } from './components/ReviewIntelligence'; // New
 
 const App: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -167,7 +166,6 @@ const App: React.FC = () => {
               </div>
             </div>
 
-<<<<<<< HEAD
             <div className="flex flex-col gap-16">
               {/* Review Intelligence Module */}
               <ReviewIntelligence key="review-intel-module" />
@@ -188,16 +186,6 @@ const App: React.FC = () => {
                 </div>
               )}
             </div>
-=======
-            {/* Review Intelligence Section - Moved up for visibility */}
-            {profile && <ReviewIntelligence profile={profile} />}
-
-            {jobs.length > 0 && (
-              <div className="space-y-12">
-                {jobs.filter(job => job.clientId === activeClient?.id).map(job => <JobCard key={job.id} job={job} />)}
-              </div>
-            )}
->>>>>>> 3172753 (finally)
           </div>
         );
       case 'settings':
