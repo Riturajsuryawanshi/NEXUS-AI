@@ -169,10 +169,9 @@ export class UserService {
   }
 
   static async loginWithGoogle(): Promise<void> {
-    const redirectUrl = window.location.hostname === 'localhost' 
-      ? 'http://localhost:3000' 
-      : window.location.origin;
-    
+    // Use current origin to support any localhost port (3000, 3004, etc.)
+    const redirectUrl = window.location.origin;
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -187,10 +186,9 @@ export class UserService {
   }
 
   static async loginWithApple(): Promise<void> {
-    const redirectUrl = window.location.hostname === 'localhost' 
-      ? 'http://localhost:3000' 
-      : window.location.origin;
-    
+    // Use current origin to support any localhost port (3000, 3004, etc.)
+    const redirectUrl = window.location.origin;
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
       options: {

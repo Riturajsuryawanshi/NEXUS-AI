@@ -5,7 +5,12 @@ import { UserService } from "./userService";
 
 export class GeminiService {
   private static getAI() {
-    return new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error('VITE_GEMINI_API_KEY is not set in environment variables');
+      throw new Error('Gemini API key not configured');
+    }
+    return new GoogleGenAI({ apiKey });
   }
 
   private static cleanJsonResponse(text: string): string {
@@ -155,17 +160,17 @@ export class GeminiService {
 
   static async generateContent(prompt: string): Promise<string> {
     const ai = this.getAI();
-    const model = 'gemini-1.5-flash';
+    const model = 'gemini-2.0-flash';
 
     const response = await ai.models.generateContent({
       model,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
-        responseMimeType: "text/plain",
-        temperature: 0.3,
+        responseMimeType: "application/json",
+        temperature: 0.4,
       }
     });
 
-    return response.text;
+    return response.text || '';
   }
 }
