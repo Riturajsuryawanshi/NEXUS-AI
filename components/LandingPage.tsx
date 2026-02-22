@@ -10,6 +10,7 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, profile, onEnterApp }) => {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleScroll = () => {
     setScrolled(window.scrollY > 20);
@@ -21,6 +22,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
   }, []);
 
   const scrollToSection = (id: string) => {
+    setMobileMenuOpen(false);
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
@@ -34,12 +36,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6'}`}>
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer group">
-            <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+            <div className="w-10 h-10 bg-gradient-to-tr from-nexus-600 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-nexus-500/30 group-hover:scale-110 transition-transform duration-300">
               <i className="fas fa-bolt"></i>
             </div>
-            <span className="text-2xl font-display font-black text-slate-900 tracking-tighter">Nexus<span className="text-purple-600">Analyst</span></span>
+            <span className="text-2xl font-display font-black text-slate-900 tracking-tighter">Nexus<span className="text-nexus-600">Analyst</span></span>
           </div>
 
+          {/* Mobile Hamburger Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors"
+            aria-label="Toggle menu"
+          >
+            <i className={`fas ${mobileMenuOpen ? 'fa-times' : 'fa-bars'}`}></i>
+          </button>
+
+          {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8">
             <button onClick={() => scrollToSection('features')} className="text-sm font-semibold text-slate-500 hover:text-purple-600 transition-colors">Features</button>
             <button onClick={() => scrollToSection('how-it-works')} className="text-sm font-semibold text-slate-500 hover:text-purple-600 transition-colors">How it works</button>
@@ -58,23 +70,48 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
               </button>
             ) : (
               <div className="flex items-center gap-4">
-                <button onClick={onLogin} className="text-sm font-bold text-slate-600 hover:text-purple-700">Sign In</button>
-                <button onClick={onGetStarted} className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-purple-600 hover:shadow-lg hover:shadow-purple-500/30">
+                <button onClick={onLogin} className="text-sm font-bold text-slate-600 hover:text-nexus-700 transition-colors">Sign In</button>
+                <button onClick={onGetStarted} className="px-6 py-2.5 bg-nexus-900 text-white rounded-xl text-sm font-bold hover:bg-nexus-700 hover:shadow-lg hover:shadow-nexus-500/30 transition-all hover:-translate-y-0.5">
                   Get Started
                 </button>
               </div>
             )}
           </div>
         </div>
+
+        {/* Mobile Nav Dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden mt-2 mx-4 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 p-6 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            <button onClick={() => scrollToSection('features')} className="block w-full text-left px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors">Features</button>
+            <button onClick={() => scrollToSection('how-it-works')} className="block w-full text-left px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors">How it works</button>
+            <button onClick={() => scrollToSection('features')} className="block w-full text-left px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors">Pricing</button>
+            <div className="h-px bg-slate-100"></div>
+            {profile ? (
+              <button
+                onClick={() => { setMobileMenuOpen(false); onEnterApp?.(); }}
+                className="w-full px-4 py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all"
+              >
+                Go to Studio <i className="fas fa-arrow-right ml-2 text-xs"></i>
+              </button>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <button onClick={() => { setMobileMenuOpen(false); onLogin(); }} className="w-full px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-colors">Sign In</button>
+                <button onClick={() => { setMobileMenuOpen(false); onGetStarted(); }} className="w-full px-4 py-3 bg-nexus-900 text-white rounded-xl text-sm font-bold hover:bg-nexus-700 transition-all">
+                  Get Started
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
       <section className="relative pt-40 pb-20 overflow-hidden">
         {/* Background Orbs - Static */}
         <div className="absolute top-0 inset-x-0 h-[600px] pointer-events-none">
-          <div className="absolute top-[-100px] left-[10%] w-[500px] h-[500px] bg-purple-200/40 rounded-full blur-[100px] mix-blend-multiply"></div>
-          <div className="absolute top-[-100px] right-[10%] w-[500px] h-[500px] bg-indigo-200/40 rounded-full blur-[100px] mix-blend-multiply"></div>
-          <div className="absolute top-[20%] left-[30%] w-[400px] h-[400px] bg-pink-200/40 rounded-full blur-[100px] mix-blend-multiply"></div>
+          <div className="absolute top-[-100px] left-[10%] w-[500px] h-[500px] bg-nexus-200/40 rounded-full blur-[100px] mix-blend-multiply animate-pulse-slow"></div>
+          <div className="absolute top-[-100px] right-[10%] w-[500px] h-[500px] bg-purple-200/40 rounded-full blur-[100px] mix-blend-multiply animate-pulse-slow delay-700"></div>
+          <div className="absolute top-[20%] left-[30%] w-[400px] h-[400px] bg-pink-200/40 rounded-full blur-[100px] mix-blend-multiply animate-pulse-slow delay-1000"></div>
         </div>
 
         <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
@@ -83,9 +120,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
             AI Data Engine v2.0
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-display font-black text-slate-900 tracking-tight leading-tight mb-6">
+          <h1 className="text-5xl md:text-7xl font-display font-black text-slate-900 tracking-tight leading-tight mb-6 animate-slide-up">
             Data analysis, <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">purified.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-nexus-600 to-purple-600">purified.</span>
           </h1>
 
           <p className="max-w-2xl mx-auto text-xl text-slate-500 leading-relaxed mb-10">
@@ -95,7 +132,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               onClick={profile && onEnterApp ? onEnterApp : onGetStarted}
-              className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-lg font-bold hover:bg-purple-600 shadow-xl shadow-slate-900/20 flex items-center gap-2"
+              className="px-8 py-4 bg-nexus-900 text-white rounded-2xl text-lg font-bold hover:bg-nexus-700 shadow-xl shadow-nexus-900/20 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
             >
               Start Analyzing Free
               <i className="fas fa-arrow-right"></i>
@@ -110,15 +147,36 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
           </div>
 
           {/* Hero Image / Dashboard Preview */}
-          <div className="mt-20 relative max-w-5xl mx-auto">
-            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[2.5rem] blur opacity-20"></div>
+          <div className="mt-20 relative max-w-5xl mx-auto animate-fade-in delay-200">
+            <div className="absolute -inset-1 bg-gradient-to-r from-nexus-500 to-purple-600 rounded-[2.5rem] blur opacity-20 animate-pulse"></div>
             <div className="relative bg-white rounded-[2rem] border border-slate-200 shadow-2xl overflow-hidden aspect-[16/9] flex items-center justify-center bg-slate-50">
-              <div className="text-center p-10">
-                <div className="w-20 h-20 bg-white rounded-2xl shadow-lg flex items-center justify-center text-4xl text-purple-600 mx-auto mb-6">
-                  <i className="fas fa-magic"></i>
+              <div className="w-full h-full p-6 md:p-10 flex flex-col">
+                {/* Mock Dashboard Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center"><i className="fas fa-bolt text-white text-xs"></i></div>
+                    <div className="h-3 w-24 bg-slate-200 rounded-full"></div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="h-3 w-16 bg-slate-200 rounded-full"></div>
+                    <div className="h-3 w-16 bg-purple-200 rounded-full"></div>
+                  </div>
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">Live Preview Area</h3>
-                <p className="text-slate-500">Interactive dashboard UI visualizations would appear here.</p>
+                {/* Mock Stats Row */}
+                <div className="grid grid-cols-4 gap-3 mb-6">
+                  {['#e0eaff', '#f3e8ff', '#d1fae5', '#fef3c7'].map((bg, i) => (
+                    <div key={i} className="rounded-xl p-3" style={{ backgroundColor: bg }}>
+                      <div className="h-2 w-8 bg-white/60 rounded mb-2"></div>
+                      <div className="h-4 w-12 bg-white/80 rounded"></div>
+                    </div>
+                  ))}
+                </div>
+                {/* Mock Chart Area */}
+                <div className="flex-1 flex items-end gap-2 px-4">
+                  {[40, 65, 35, 80, 55, 70, 45, 90, 60, 75].map((h, i) => (
+                    <div key={i} className="flex-1 rounded-t-lg transition-all" style={{ height: `${h}%`, backgroundColor: i === 7 ? '#6366f1' : '#e2e8f0' }}></div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -171,7 +229,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
                 <h3 className="text-2xl font-bold text-slate-900 mb-4">Deterministic Core</h3>
                 <p className="text-slate-500 leading-relaxed">Math doesn't lie. We use statistical proofs to ensure every insight is 100% accurate, unlike hallucinating LLMs.</p>
               </div>
-              <img src="https://placehold.co/400x300/e2e8f0/64748b?text=Math+Proof+UI" className="rounded-2xl mt-8 opacity-80" alt="Feature Preview" />
+              <div className="rounded-2xl mt-8 bg-indigo-100/50 border border-indigo-200/50 p-6 flex items-end gap-2 h-48">
+                {[30, 55, 25, 70, 45, 60, 35, 80].map((h, i) => (
+                  <div key={i} className="flex-1 rounded-t-md bg-indigo-300/60" style={{ height: `${h}%` }}></div>
+                ))}
+              </div>
             </div>
 
             {/* Feature 2 */}
@@ -353,7 +415,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
 
           {/* Bottom Bar */}
           <div className="pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-slate-400 text-sm">© 2025 NexusAnalyst AI. All rights reserved.</p>
+            <p className="text-slate-400 text-sm">© {new Date().getFullYear()} NexusAnalyst AI. All rights reserved.</p>
             <div className="flex gap-6 text-sm">
               <a href="#" className="text-slate-400 hover:text-slate-600">Privacy Policy</a>
               <a href="#" className="text-slate-400 hover:text-slate-600">Terms of Service</a>

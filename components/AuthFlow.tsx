@@ -54,7 +54,7 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onSuccess, initialMode }) =>
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-[#f8fafc] relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-[#f8fafc] dark:bg-slate-900 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 -left-20 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px]"></div>
         <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-purple-500/10 rounded-full blur-[120px]"></div>
@@ -65,25 +65,25 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onSuccess, initialMode }) =>
           <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
             <i className="fas fa-bolt text-white text-2xl"></i>
           </div>
-          <h2 className="text-4xl font-display font-black text-slate-900 mb-2 tracking-tight">
+          <h2 className="text-4xl font-display font-black text-slate-900 dark:text-white mb-2 tracking-tight">
             Nexus Analyst
           </h2>
-          <p className="text-slate-500 font-medium">
+          <p className="text-slate-500 dark:text-slate-400 font-medium">
             Professional AI Data Intelligence
           </p>
         </div>
 
-        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-2xl">
+        <div className="bg-white dark:bg-slate-800/80 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-2xl dark:shadow-none">
 
           <div className="mb-8">
             <div className="flex flex-col items-center gap-3">
               <button
                 onClick={handleGoogleLogin}
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all group shadow-sm hover:shadow-md"
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all group shadow-sm hover:shadow-md"
               >
                 <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="Google" className="w-5 h-5" />
-                <span className="text-sm font-bold text-slate-700">
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
                   {isLoading ? 'Connecting...' : 'Continue with Google'}
                 </span>
               </button>
@@ -103,27 +103,27 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onSuccess, initialMode }) =>
             </div>
 
             <div className="flex items-center gap-4 mt-8">
-              <div className="flex-1 h-px bg-slate-100"></div>
-              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Or Secure Email</span>
-              <div className="flex-1 h-px bg-slate-100"></div>
+              <div className="flex-1 h-px bg-slate-100 dark:bg-slate-700"></div>
+              <span className="text-[10px] font-bold text-slate-300 dark:text-slate-500 uppercase tracking-widest">Or Secure Email</span>
+              <div className="flex-1 h-px bg-slate-100 dark:bg-slate-700"></div>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 pl-1">Business Email</label>
+              <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 pl-1">Business Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="analyst@company.com"
-                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all text-slate-900 font-medium"
+                className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all text-slate-900 dark:text-white font-medium placeholder:text-slate-300 dark:placeholder:text-slate-500"
                 required
               />
             </div>
 
             {error && (
-              <div className="p-4 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-xs font-semibold">
+              <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 text-xs font-semibold">
                 {error}
               </div>
             )}
@@ -137,7 +137,7 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onSuccess, initialMode }) =>
             </button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-slate-50 text-center">
+          <div className="mt-8 pt-8 border-t border-slate-50 dark:border-slate-700 text-center">
             <button
               onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
               className="text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-all"

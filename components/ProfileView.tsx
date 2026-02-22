@@ -30,19 +30,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ profile }) => {
 
     return (
         <div className="max-w-4xl mx-auto p-12 space-y-12">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-8">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-8">
                 <div>
-                    <h2 className="text-4xl font-display font-black text-slate-900 tracking-tight">User Profile</h2>
-                    <p className="text-slate-500 mt-2 font-medium">Manage your account settings and preferences.</p>
+                    <h2 className="text-4xl font-display font-black text-slate-900 dark:text-white tracking-tight">User Profile</h2>
+                    <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">Manage your account settings and preferences.</p>
                 </div>
-                <div className="text-xs font-mono bg-slate-100 px-3 py-1 rounded text-slate-500">ID: {profile.userId.substring(0, 8)}...</div>
+                <div className="text-xs font-mono bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded text-slate-500 dark:text-slate-400">ID: {profile.userId.substring(0, 8)}...</div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                 {/* Profile Card */}
                 <div className="lg:col-span-2 space-y-8">
-                    <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
-                        <h3 className="text-xl font-bold text-slate-900 mb-8 flex items-center gap-3">
+                    <div className="bg-white dark:bg-slate-800/80 p-8 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-8 flex items-center gap-3">
                             <i className="fas fa-user-circle text-indigo-600 text-2xl"></i>
                             Personal Information
                         </h3>
@@ -50,22 +50,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ profile }) => {
                         <div className="space-y-6 relative z-10">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 pl-1">Email Address</label>
+                                    <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 pl-1">Email Address</label>
                                     <input
                                         type="email"
                                         value={profile.authProvider === 'email' ? 'Managed by Auth Provider' : 'Linked Account'}
                                         disabled
-                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-400 font-medium cursor-not-allowed"
+                                        className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-600 rounded-2xl text-slate-400 dark:text-slate-500 font-medium cursor-not-allowed"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 pl-1">Display Name</label>
+                                    <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 pl-1">Display Name</label>
                                     <input
                                         type="text"
                                         value={displayName}
                                         onChange={(e) => setDisplayName(e.target.value)}
                                         placeholder="Enter your name"
-                                        className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-slate-900 font-semibold placeholder:text-slate-300"
+                                        className="w-full px-5 py-4 bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-slate-900 dark:text-white font-semibold placeholder:text-slate-300 dark:placeholder:text-slate-500"
                                     />
                                 </div>
                             </div>
