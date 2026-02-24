@@ -91,43 +91,16 @@ serve(async (req) => {
                     .eq('user_id', userId)
                     .eq('status', 'active')
 
-                // Create new sub
+                // Create new sub (pro or agency)
                 await supabaseAdmin
                     .from('subscriptions')
                     .insert({
                         user_id: userId,
-                        plan_type: itemId, // solo, pro
+                        plan_type: itemId, // pro, agency
                         status: 'active',
                         started_at: new Date().toISOString(),
                         expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // +30 days
                     })
-            } else if (type === 'credit_pack') {
-                // Determine credit amount
-                let credits = 0
-                if (itemId === '1_report') credits = 1
-                if (itemId === '5_reports') credits = 5
-                if (itemId === '10_reports') credits = 10
-
-                // Get existing
-                const { data: existing } = await supabaseAdmin
-                    .from('report_credits')
-                    .select('*')
-                    .eq('user_id', userId)
-                    .single()
-
-                if (existing) {
-                    await supabaseAdmin
-                        .from('report_credits')
-                        .update({
-                            credits_available: existing.credits_available + credits,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('user_id', userId)
-                } else {
-                    await supabaseAdmin
-                        .from('report_credits')
-                        .insert({ user_id: userId, credits_available: credits })
-                }
             }
         } else if (event.event === 'payment.failed') {
             const payment = payload.payment.entity

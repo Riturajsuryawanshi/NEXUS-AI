@@ -16,15 +16,8 @@ interface OrderRequest {
 }
 
 const PLANS = {
-    'solo': { price: 99900, currency: 'INR' }, // amount in smallest currency unit (paise)
-    'pro': { price: 499900, currency: 'INR' },
-    // enterprise is contact sales, free is 0
-}
-
-const CREDIT_PACKS = {
-    '1_report': { price: 29900, currency: 'INR' },
-    '5_reports': { price: 129900, currency: 'INR' },
-    '10_reports': { price: 239900, currency: 'INR' },
+    'pro': { price: 1000, currency: 'USD' },    // $10 in cents
+    'agency': { price: 5000, currency: 'USD' },  // $50 in cents
 }
 
 serve(async (req) => {
@@ -49,7 +42,7 @@ serve(async (req) => {
         const { type, itemId } = await req.json() as OrderRequest
 
         let amount = 0
-        let currency = 'INR'
+        let currency = 'USD'
 
         // Calculate Price
         if (type === 'subscription') {
@@ -57,11 +50,6 @@ serve(async (req) => {
             if (!plan) throw new Error('Invalid plan selection')
             amount = plan.price
             currency = plan.currency
-        } else if (type === 'credit_pack') {
-            const pack = CREDIT_PACKS[itemId as keyof typeof CREDIT_PACKS]
-            if (!pack) throw new Error('Invalid credit pack')
-            amount = pack.price
-            currency = pack.currency
         } else {
             throw new Error('Invalid payment type')
         }

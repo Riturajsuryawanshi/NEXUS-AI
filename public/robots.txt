@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://nexus.supernovaind.com/sitemap.xml

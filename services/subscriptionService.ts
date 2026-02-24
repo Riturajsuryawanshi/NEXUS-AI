@@ -6,43 +6,55 @@ import { UserService } from './userService';
 export const PLANS: Record<PlanType, PlanConfig> = {
     free: {
         id: 'free',
-        label: 'Explorer',
+        label: 'Free',
         price: 0,
-        currency: 'INR',
-        features: ['1 Client Limit', 'Basic Data Analysis', 'Make Money Preview'],
-        limits: { clients: 1, reportsPerMonth: 0, canExport: false, whiteLabel: false }
-    },
-    solo: {
-        id: 'solo',
-        label: 'Freelancer',
-        price: 999,
-        currency: 'INR',
-        features: ['5 Clients', 'Full Make Money Access', '10 Reports/mo', 'Excel/PDF Export'],
-        limits: { clients: 5, reportsPerMonth: 10, canExport: true, whiteLabel: false }
+        originalPrice: 0,
+        discount: 0,
+        currency: 'USD',
+        features: [
+            '3 Reports / month',
+            'Basic 11-section analysis',
+            'Rating & sentiment breakdown',
+            'View-only (no export)',
+        ],
+        limits: { clients: 1, reportsPerMonth: 3, canExport: false, whiteLabel: false }
     },
     pro: {
         id: 'pro',
+        label: 'Pro',
+        price: 10,
+        originalPrice: 20,
+        discount: 50,
+        currency: 'USD',
+        features: [
+            '50 Reports / month',
+            'Full AI-powered analysis',
+            'Download PDF reports',
+            'Save & revisit reports',
+            'AI business suggestions',
+            'Priority processing',
+        ],
+        limits: { clients: 10, reportsPerMonth: 50, canExport: true, whiteLabel: false }
+    },
+    agency: {
+        id: 'agency',
         label: 'Agency',
-        price: 4999,
-        currency: 'INR',
-        features: ['50 Clients', 'Unlimited Reports', 'White Labeling', 'Priority Support'],
+        price: 50,
+        originalPrice: 100,
+        discount: 50,
+        currency: 'USD',
+        features: [
+            'Unlimited reports',
+            'Everything in Pro',
+            'White-label PDF branding',
+            'API access',
+            'Team seats (up to 5)',
+            'Priority support',
+            'Bulk URL analysis',
+        ],
         limits: { clients: 50, reportsPerMonth: 'unlimited', canExport: true, whiteLabel: true }
     },
-    enterprise: {
-        id: 'enterprise',
-        label: 'Enterprise',
-        price: 0, // Contact Sales
-        currency: 'USD',
-        features: [],
-        limits: { clients: 999, reportsPerMonth: 'unlimited', canExport: true, whiteLabel: true }
-    }
 };
-
-export const CREDIT_PACKS = [
-    { id: '1_report', credits: 1, price: 299, label: 'Single Report' },
-    { id: '5_reports', credits: 5, price: 1299, label: '5 Report Pack' },
-    { id: '10_reports', credits: 10, price: 2399, label: '10 Report Pack' }
-];
 
 export class SubscriptionService {
 
@@ -92,12 +104,7 @@ export class SubscriptionService {
         if (plan.price > 0) {
             return await PaymentService.createOrder('subscription', planType);
         }
-        // Free plan logic if needed, or handle separately
         return null;
-    }
-
-    static async createCreditPurchaseOrder(packId: string): Promise<any> {
-        return await PaymentService.createOrder('credit_pack', packId);
     }
 
     static async consumeCredit(userId: string): Promise<boolean> {

@@ -49,7 +49,7 @@ alter table public.jobs enable row level security;
 -- Policies (Drop first to allow re-run)
 -- Profiles
 drop policy if exists "Public profiles are viewable by everyone" on public.profiles;
-create policy "Public profiles are viewable by everyone" on public.profiles for select using (true);
+create policy "Users can view own profile" on public.profiles for select using (auth.uid() = id);
 
 drop policy if exists "Users can insert their own profile" on public.profiles;
 create policy "Users can insert their own profile" on public.profiles for insert with check (auth.uid() = id);
@@ -142,3 +142,27 @@ create policy "Users can view own credits" on public.report_credits for select u
 -- Transactions Policies
 drop policy if exists "Users can view own transactions" on public.payment_transactions;
 create policy "Users can view own transactions" on public.payment_transactions for select using (auth.uid() = user_id);
+
+-- BUSINESS AUDITS (Review Intelligence History)
+create table if not exists public.business_audits (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) not null,
+  place_id text not null,
+  business_name text not null,
+  audit_data jsonb not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- RLS for Audits
+alter table public.business_audits enable row level security;
+
+drop policy if exists "Users can view own audits" on public.business_audits;
+create policy "Users can view own audits" on public.business_audits for select using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own audits" on public.business_audits;
+create policy "Users can insert own audits" on public.business_audits for insert with check (auth.uid() = user_id);
+
+drop policy if exists "Users can delete own audits" on public.business_audits;
+create policy "Users can delete own audits" on public.business_audits for delete using (auth.uid() = user_id);
+
+-- Ensure service role has full access (implicit, but good practice to rely on bypass RLS)

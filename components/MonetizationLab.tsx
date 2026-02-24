@@ -29,7 +29,7 @@ export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile,
 
   const selectedJob = jobs.find(j => j.id === selectedJobId);
   const isFreePlan = profile.planType === 'free';
-  const isSoloPlan = profile.planType === 'solo';
+  const isProPlan = profile.planType === 'pro';
 
   useEffect(() => {
     if (selectedJob && selectedJob.summary && client.businessContext) {
@@ -55,7 +55,7 @@ export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile,
         setIsPricingOpen(true);
         return;
       }
-    } else if (isSoloPlan) {
+    } else if (isProPlan) {
       // Check monthly limit here if we tracked it, for now assume unlim or high limit
       // Real app would check SubscriptionService.checkReportLimit()
     }
