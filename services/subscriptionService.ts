@@ -122,4 +122,41 @@ export class SubscriptionService {
         UserService.refreshProfile();
         return true;
     }
+
+    // --- Monthly Usage Tracking ---
+
+    static async getMonthlyUsage(userId: string): Promise<number> {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+        const { count, error } = await supabase
+            .from('business_audits')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .gte('created_at', startOfMonth);
+
+        if (error) {
+            console.error('Error fetching monthly usage:', error);
+            return 0;
+        }
+        return count || 0;
+    }
+
+    static getReportLimit(planType: PlanType): number | 'unlimited' {
+        return PLANS[planType]?.limits?.reportsPerMonth ?? 3;
+    }
+
+    static async canGenerateReport(userId: string, planType: PlanType): Promise<{ allowed: boolean; used: number; limit: number | 'unlimited' }> {
+        const limit = this.getReportLimit(planType);
+        if (limit === 'unlimited') {
+            return { allowed: true, used: 0, limit: 'unlimited' };
+        }
+
+        const used = await this.getMonthlyUsage(userId);
+        return {
+            allowed: used < limit,
+            used,
+            limit
+        };
+    }
 }

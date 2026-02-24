@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ReviewService, ReviewPipelineStep } from '../services/reviewService';
-import { ReviewAudit } from '../types';
+import { ReviewAudit, UserProfile, PlanType } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { UserService } from '../services/userService';
+import { SubscriptionService } from '../services/subscriptionService';
+import { PricingModal } from './PricingModal';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import {
@@ -46,7 +48,33 @@ export const ReviewIntelligence: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showPricing, setShowPricing] = useState(false);
+  const [monthlyUsage, setMonthlyUsage] = useState(0);
+  const [reportLimit, setReportLimit] = useState<number | 'unlimited'>(3);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
+
+  // Subscribe to user profile changes and fetch usage
+  useEffect(() => {
+    const unsubscribe = UserService.subscribe(async (profile) => {
+      setUserProfile(profile);
+      if (profile) {
+        const planType = profile.planType || 'free';
+        const limit = SubscriptionService.getReportLimit(planType);
+        setReportLimit(limit);
+        const usage = await SubscriptionService.getMonthlyUsage(profile.userId);
+        setMonthlyUsage(usage);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const refreshUsage = async () => {
+    if (userProfile) {
+      const usage = await SubscriptionService.getMonthlyUsage(userProfile.userId);
+      setMonthlyUsage(usage);
+    }
+  };
 
   const isPaidUser = (): boolean => {
     const userId = UserService.getCurrentUserId();
@@ -59,9 +87,23 @@ export const ReviewIntelligence: React.FC = () => {
     }
   };
 
+  const isAtLimit = reportLimit !== 'unlimited' && monthlyUsage >= reportLimit;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim()) return;
+
+    // --- CREDIT GATE ---
+    if (userProfile) {
+      const { allowed } = await SubscriptionService.canGenerateReport(
+        userProfile.userId,
+        userProfile.planType || 'free'
+      );
+      if (!allowed) {
+        setShowPricing(true);
+        return;
+      }
+    }
 
     setIsLoading(true);
     setError(null);
@@ -73,6 +115,8 @@ export const ReviewIntelligence: React.FC = () => {
         setCurrentStep(step);
       });
       setAudit(result);
+      // Refresh usage count after successful generation
+      await refreshUsage();
     } catch (err: any) {
       console.error('[ReviewIntelligence]', err);
       const message = err.message || 'Failed to generate audit. Please check the URL and try again.';
@@ -750,6 +794,32 @@ export const ReviewIntelligence: React.FC = () => {
           </h3>
           <p className="text-slate-500 text-xs mt-0.5">11-Section Business Analysis • Powered by Google AI</p>
         </div>
+        {/* Usage Badge */}
+        <div className="flex items-center gap-3">
+          {reportLimit !== 'unlimited' ? (
+            <div
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${isAtLimit
+                  ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
+                  : 'bg-indigo-50 border-indigo-100 text-indigo-700 hover:bg-indigo-100'
+                }`}
+              onClick={() => isAtLimit && setShowPricing(true)}
+            >
+              <i className={`fas ${isAtLimit ? 'fa-lock' : 'fa-chart-bar'}`}></i>
+              <span>{monthlyUsage}/{reportLimit} reports used</span>
+              <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${isAtLimit ? 'bg-rose-500' : 'bg-indigo-500'}`}
+                  style={{ width: `${Math.min((monthlyUsage / (reportLimit as number)) * 100, 100)}%` }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 border border-emerald-100 text-emerald-700">
+              <i className="fas fa-infinity"></i>
+              <span>Unlimited reports</span>
+            </div>
+          )}
+        </div>
         {audit && (
           <div className="flex gap-3 w-full md:w-auto">
             <button
@@ -807,24 +877,54 @@ export const ReviewIntelligence: React.FC = () => {
 
       {/* Floating Input */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-50">
+        {isAtLimit && (
+          <div
+            onClick={() => setShowPricing(true)}
+            className="mb-2 mx-auto max-w-md bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-center py-2 px-4 rounded-full text-xs font-bold cursor-pointer hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg animate-pulse"
+          >
+            <i className="fas fa-rocket mr-1"></i>
+            You've used all {reportLimit} free reports — Upgrade to continue
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="relative group">
           <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 rounded-full blur-xl transition-opacity opacity-0 group-hover:opacity-100"></div>
           <input
             type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="Paste Google Maps URL or business name..."
-            className="relative z-10 w-full pl-6 pr-14 py-3.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-[0_8px_30px_rgb(0,0,0,0.12)] focus:shadow-[0_8px_30px_rgb(0,0,0,0.16)] focus:border-nexus-300 outline-none transition-all font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm"
+            placeholder={isAtLimit ? 'Upgrade your plan to generate more reports...' : 'Paste Google Maps URL or business name...'}
+            disabled={isAtLimit}
+            className={`relative z-10 w-full pl-6 pr-14 py-3.5 rounded-full bg-white dark:bg-slate-800 border shadow-[0_8px_30px_rgb(0,0,0,0.12)] focus:shadow-[0_8px_30px_rgb(0,0,0,0.16)] outline-none transition-all font-medium text-sm ${isAtLimit
+                ? 'border-rose-200 text-slate-400 cursor-not-allowed bg-slate-50'
+                : 'border-slate-200 dark:border-slate-700 focus:border-nexus-300 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500'
+              }`}
           />
           <button
-            type="submit"
-            disabled={isLoading || !url.trim()}
-            className="absolute right-2 top-2 w-9 h-9 bg-nexus-900 text-white rounded-full flex items-center justify-center hover:bg-nexus-800 disabled:opacity-50 disabled:bg-slate-100 disabled:text-slate-300 transition-all z-20 shadow-md"
+            type={isAtLimit ? 'button' : 'submit'}
+            disabled={isLoading || (!isAtLimit && !url.trim())}
+            onClick={isAtLimit ? () => setShowPricing(true) : undefined}
+            className={`absolute right-2 top-2 w-9 h-9 rounded-full flex items-center justify-center transition-all z-20 shadow-md ${isAtLimit
+                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 cursor-pointer'
+                : 'bg-nexus-900 text-white hover:bg-nexus-800 disabled:opacity-50 disabled:bg-slate-100 disabled:text-slate-300'
+              }`}
           >
-            {isLoading ? <i className="fas fa-circle-notch fa-spin text-xs"></i> : <i className="fas fa-arrow-up text-xs"></i>}
+            {isLoading ? (
+              <i className="fas fa-circle-notch fa-spin text-xs"></i>
+            ) : isAtLimit ? (
+              <i className="fas fa-lock text-xs"></i>
+            ) : (
+              <i className="fas fa-arrow-up text-xs"></i>
+            )}
           </button>
         </form>
       </div>
+
+      {/* Pricing Modal */}
+      <PricingModal
+        isOpen={showPricing}
+        onClose={() => setShowPricing(false)}
+        currentUserProfile={userProfile || undefined}
+      />
     </div>
   );
 };

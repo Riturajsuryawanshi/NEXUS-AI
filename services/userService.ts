@@ -4,9 +4,8 @@ import { SubscriptionService } from './subscriptionService';
 
 const PLAN_LIMITS: Record<PlanType, Partial<UserProfile>> = {
   free: { dailyFileLimit: 3, aiCallsRemaining: 5, aiTokensLimitDaily: 2000 },
-  solo: { dailyFileLimit: 10, aiCallsRemaining: 20, aiTokensLimitDaily: 10000 },
   pro: { dailyFileLimit: 50, aiCallsRemaining: 50, aiTokensLimitDaily: 20000 },
-  enterprise: { dailyFileLimit: 1000, aiCallsRemaining: 1000, aiTokensLimitDaily: 500000 },
+  agency: { dailyFileLimit: 1000, aiCallsRemaining: 1000, aiTokensLimitDaily: 500000 },
 };
 
 export class UserService {
