@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { UserProfile } from '../types';
+import { UserProfile, PlanType } from '../types';
 import { UserService } from '../services/userService';
+import { SubscriptionService } from '../services/subscriptionService';
 
 interface ProfileViewProps {
     profile: UserProfile;
@@ -10,10 +11,23 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ profile }) => {
     const [displayName, setDisplayName] = useState(profile.displayName || '');
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [monthlyUsage, setMonthlyUsage] = useState(0);
+    const [reportLimit, setReportLimit] = useState<number | 'unlimited'>(3);
 
     useEffect(() => {
         setDisplayName(profile.displayName || '');
     }, [profile]);
+
+    useEffect(() => {
+        const fetchUsage = async () => {
+            const planType = profile.planType || 'free';
+            const limit = SubscriptionService.getReportLimit(planType);
+            setReportLimit(limit);
+            const usage = await SubscriptionService.getMonthlyUsage(profile.userId);
+            setMonthlyUsage(usage);
+        };
+        fetchUsage();
+    }, [profile.userId, profile.planType]);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -27,6 +41,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ profile }) => {
             setIsSaving(false);
         }
     };
+
+    const reportsRemaining = reportLimit === 'unlimited' ? '∞' : Math.max(0, reportLimit - monthlyUsage);
+    const isAtLimit = reportLimit !== 'unlimited' && monthlyUsage >= reportLimit;
+    const usagePercent = reportLimit === 'unlimited' ? 0 : Math.min((monthlyUsage / reportLimit) * 100, 100);
 
     return (
         <div className="max-w-4xl mx-auto p-12 space-y-12">
@@ -112,6 +130,40 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ profile }) => {
                                     </div>
                                 </div>
 
+                                {/* Monthly Reports Usage */}
+                                <div>
+                                    <div className="flex justify-between items-end mb-2">
+                                        <div className="text-indigo-200/60 text-[10px] font-bold uppercase tracking-widest">Monthly Reports</div>
+                                        <div className="text-right">
+                                            {reportLimit === 'unlimited' ? (
+                                                <span className="text-emerald-400 font-mono font-bold text-lg">∞ Unlimited</span>
+                                            ) : (
+                                                <>
+                                                    <span className={`font-mono font-bold text-lg ${isAtLimit ? 'text-rose-400' : 'text-white'}`}>{monthlyUsage}</span>
+                                                    <span className="text-indigo-200/40 text-sm mx-1">/</span>
+                                                    <span className="text-indigo-200/60 font-mono text-sm">{reportLimit}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {reportLimit !== 'unlimited' && (
+                                        <div className="w-full h-2 bg-slate-800/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/5">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-1000 ease-out ${isAtLimit ? 'bg-gradient-to-r from-rose-500 to-red-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`}
+                                                style={{ width: `${usagePercent}%` }}
+                                            ></div>
+                                        </div>
+                                    )}
+                                    <div className="mt-2 flex justify-between items-center">
+                                        <span className={`text-[10px] font-bold ${isAtLimit ? 'text-rose-400' : 'text-indigo-200/50'}`}>
+                                            {isAtLimit ? '⚠️ Limit reached' : `${reportsRemaining} remaining this month`}
+                                        </span>
+                                        {isAtLimit && (
+                                            <span className="text-[10px] font-bold text-amber-400 animate-pulse">Upgrade →</span>
+                                        )}
+                                    </div>
+                                </div>
+
                                 <div>
                                     <div className="flex justify-between items-end mb-2">
                                         <div className="text-indigo-200/60 text-[10px] font-bold uppercase tracking-widest">Daily File Limit</div>
@@ -138,7 +190,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ profile }) => {
 
                         <div className="relative z-10 pt-8 border-t border-white/10 mt-4">
                             <p className="text-xs text-indigo-200/40 leading-relaxed">
-                                Usage resets daily at 00:00 UTC. Need more capacity? Contact enterprise support.
+                                Reports reset monthly. Daily limits reset at 00:00 UTC. Need more capacity? Upgrade your plan.
                             </p>
                         </div>
                     </div>

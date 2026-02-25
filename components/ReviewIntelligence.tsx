@@ -115,6 +115,23 @@ export const ReviewIntelligence: React.FC = () => {
         setCurrentStep(step);
       });
       setAudit(result);
+
+      // Auto-save report to database (counts toward monthly limit)
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('business_audits').insert({
+            user_id: user.id,
+            place_id: result.business_summary.place_id,
+            business_name: result.business_summary.name,
+            audit_data: result
+          });
+          console.log('[ReviewIntelligence] Report auto-saved to account');
+        }
+      } catch (saveErr) {
+        console.warn('[ReviewIntelligence] Auto-save failed, report still visible:', saveErr);
+      }
+
       // Refresh usage count after successful generation
       await refreshUsage();
     } catch (err: any) {
@@ -799,8 +816,8 @@ export const ReviewIntelligence: React.FC = () => {
           {reportLimit !== 'unlimited' ? (
             <div
               className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${isAtLimit
-                  ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
-                  : 'bg-indigo-50 border-indigo-100 text-indigo-700 hover:bg-indigo-100'
+                ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
+                : 'bg-indigo-50 border-indigo-100 text-indigo-700 hover:bg-indigo-100'
                 }`}
               onClick={() => isAtLimit && setShowPricing(true)}
             >
@@ -895,8 +912,8 @@ export const ReviewIntelligence: React.FC = () => {
             placeholder={isAtLimit ? 'Upgrade your plan to generate more reports...' : 'Paste Google Maps URL or business name...'}
             disabled={isAtLimit}
             className={`relative z-10 w-full pl-6 pr-14 py-3.5 rounded-full bg-white dark:bg-slate-800 border shadow-[0_8px_30px_rgb(0,0,0,0.12)] focus:shadow-[0_8px_30px_rgb(0,0,0,0.16)] outline-none transition-all font-medium text-sm ${isAtLimit
-                ? 'border-rose-200 text-slate-400 cursor-not-allowed bg-slate-50'
-                : 'border-slate-200 dark:border-slate-700 focus:border-nexus-300 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500'
+              ? 'border-rose-200 text-slate-400 cursor-not-allowed bg-slate-50'
+              : 'border-slate-200 dark:border-slate-700 focus:border-nexus-300 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500'
               }`}
           />
           <button
@@ -904,8 +921,8 @@ export const ReviewIntelligence: React.FC = () => {
             disabled={isLoading || (!isAtLimit && !url.trim())}
             onClick={isAtLimit ? () => setShowPricing(true) : undefined}
             className={`absolute right-2 top-2 w-9 h-9 rounded-full flex items-center justify-center transition-all z-20 shadow-md ${isAtLimit
-                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 cursor-pointer'
-                : 'bg-nexus-900 text-white hover:bg-nexus-800 disabled:opacity-50 disabled:bg-slate-100 disabled:text-slate-300'
+              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 cursor-pointer'
+              : 'bg-nexus-900 text-white hover:bg-nexus-800 disabled:opacity-50 disabled:bg-slate-100 disabled:text-slate-300'
               }`}
           >
             {isLoading ? (
