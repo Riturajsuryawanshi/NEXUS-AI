@@ -23,6 +23,10 @@ Click **Enable**.
 2.  Click **Create Credentials** -> **API key**.
 3.  Copy the generated key (it starts with `AIza...`).
 
+> **⚠️ CRITICAL:** Do **NOT** set "HTTP referers (web sites)" restrictions on this API key. 
+> The Places Web Service API (which the backend uses) does not support referer restrictions. 
+> If you must restrict it, choose **IP addresses** or leave it unrestricted.
+
 ### 3. Set the Key in Supabase
 
 Run this command in your terminal (replace `YOUR_KEY_HERE` with the key you just copied):

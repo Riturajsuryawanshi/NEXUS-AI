@@ -19,6 +19,7 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onSuccess, initialMode }) =>
     try {
       await UserService.loginWithGoogle();
       // Note: This often redirects, so onSuccess might not be reached immediately
+      setTimeout(() => setIsLoading(false), 5000);
     } catch (err: any) {
       setError(err.message || 'Google authentication failed.');
       setIsLoading(false);
@@ -30,6 +31,7 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onSuccess, initialMode }) =>
     setError(null);
     try {
       await UserService.loginWithApple();
+      setTimeout(() => setIsLoading(false), 5000);
     } catch (err: any) {
       setError(err.message || 'Apple authentication failed.');
       setIsLoading(false);

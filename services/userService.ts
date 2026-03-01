@@ -11,24 +11,33 @@ const PLAN_LIMITS: Record<PlanType, Partial<UserProfile>> = {
 export class UserService {
   private static currentUserProfile: UserProfile | null = null;
   private static listeners: ((profile: UserProfile | null) => void)[] = [];
+  private static isInitialized = false;
+  private static initPromise: Promise<void> | null = null;
 
   static async init() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      await this.fetchProfile(session.user.id);
-    } else {
-      this.currentUserProfile = null;
-      this.notify();
-    }
+    if (this.initPromise) return this.initPromise;
+    if (this.isInitialized) return;
 
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    this.initPromise = (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         await this.fetchProfile(session.user.id);
       } else {
         this.currentUserProfile = null;
         this.notify();
       }
-    });
+
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+          await this.fetchProfile(session.user.id);
+        } else {
+          this.currentUserProfile = null;
+          this.notify();
+        }
+      });
+      this.isInitialized = true;
+    })();
+    return this.initPromise;
   }
 
   static subscribe(cb: (profile: UserProfile | null) => void) {
@@ -49,7 +58,7 @@ export class UserService {
     this.listeners.forEach(l => l(this.currentUserProfile));
   }
 
-  private static async fetchProfile(userId: string) {
+  private static async fetchProfile(userId: string, retries = 3, createAttempted = false) {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -59,9 +68,18 @@ export class UserService {
     if (error || !data) {
       // Check if it's a "Row not found" error (PGRST116) or just no data returned
       if (!data || (error && error.code === 'PGRST116')) {
-        console.warn("Profile missing for user. Attempting to create default profile...");
-        await this.createDefaultProfile(userId);
-        return;
+        if (retries > 0) {
+          console.warn(`Profile not found, retrying in 1s... (${retries} attempts left)`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return this.fetchProfile(userId, retries - 1, createAttempted);
+        } else if (!createAttempted) {
+          console.warn("Profile missing. Attempting to create default profile...");
+          await this.createDefaultProfile(userId);
+          return;
+        } else {
+          console.error("Critical error: Profile could not be found or created.");
+          return;
+        }
       }
       console.error('Error fetching profile:', error);
       return;
@@ -132,11 +150,11 @@ export class UserService {
       .insert([newProfile]);
 
     if (error) {
-      console.error("Failed to create default profile:", error);
-    } else {
-      // Retry fetching
-      await this.fetchProfile(userId);
+      console.warn("Insert failed (likely due to trigger already creating it or constraint violation):", error);
     }
+
+    // Always retry fetching after insert attempt
+    await this.fetchProfile(userId, 0, true);
   }
 
   static async login(email: string): Promise<void> {
