@@ -24,6 +24,19 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom'],
+            charts: ['chart.js', 'react-chartjs-2'],
+            pdf: ['jspdf', 'html2canvas'],
+            data: ['xlsx', '@supabase/supabase-js'],
+            ai: ['@google/genai']
+          }
+        }
+      }
     }
   };
 });

@@ -40,4 +40,5 @@ export interface PlanConfig {
         canExport: boolean;
         whiteLabel: boolean;
     };
+    paymentUrl?: string;
 }

@@ -12,10 +12,10 @@ interface MonetizationLabProps {
   jobs: JobRecord[];
   profile: UserProfile;
   client: Client;
-  view: 'make-money' | 'opportunities' | 'proof-reports';
 }
 
-export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile, client, view }) => {
+export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile, client }) => {
+  const [view, setView] = useState<'make-money' | 'opportunities' | 'proof-reports'>('make-money');
   const [selectedJobId, setSelectedJobId] = useState<string>(jobs[0]?.id || '');
   const [showSetup, setShowSetup] = useState(!client.businessContext);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
@@ -259,39 +259,56 @@ export const MonetizationLab: React.FC<MonetizationLabProps> = ({ jobs, profile,
     </div>
   );
 
-  return (
-    <div className="max-w-[1600px] mx-auto p-12 space-y-16 animate-in fade-in duration-700">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10">
-        <div className="max-w-2xl">
-          <div className="flex items-center gap-4 mb-6">
-            <h2 className="text-5xl font-display font-black text-slate-900 tracking-tight uppercase italic">
-              Lab <span className="text-indigo-600">01</span>
-            </h2>
-            <div className="h-10 w-px bg-slate-200"></div>
-            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900 text-[10px] font-black uppercase text-white tracking-widest">
-              {view === 'make-money' ? 'ROI Action Center' : view === 'opportunities' ? 'Opportunity Scan' : 'Report Studio'}
-            </div>
-            {/* Plan Badge in Lab */}
-            {isFreePlan && (
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-[10px] font-bold text-indigo-600 cursor-pointer hover:bg-indigo-100" onClick={() => setIsPricingOpen(true)}>
-                <i className="fas fa-lock"></i> Upgrade to Unlock All
-              </div>
-            )}
-          </div>
-          <p className="text-slate-500 text-xl font-medium leading-relaxed">
-            {view === 'make-money' && "Statistical decisions to scale revenue and plug financial leaks."}
-            {view === 'opportunities' && "Surface hidden anomalies and performance deltas across segments."}
-            {view === 'proof-reports' && "Export mathematically-grounded reports for clients or stakeholders."}
-          </p>
-        </div>
+  const tabs = [
+    { id: 'make-money' as const, label: 'Make Money', icon: 'fa-sack-dollar', color: 'emerald' },
+    { id: 'opportunities' as const, label: 'Opportunities', icon: 'fa-radar', color: 'amber' },
+    { id: 'proof-reports' as const, label: 'Proof Reports', icon: 'fa-file-shield', color: 'purple' },
+  ];
 
+  return (
+    <div className="max-w-[1600px] mx-auto p-12 space-y-10 animate-in fade-in duration-700">
+      {/* Internal Tab Bar */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div>
+          <h2 className="text-4xl font-display font-black text-slate-900 dark:text-white tracking-tight mb-2">
+            Monetization <span className="text-indigo-600">Lab</span>
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Statistical analysis tools for revenue optimization</p>
+        </div>
+        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
+          {tabs.map(tab => {
+            const isActive = view === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setView(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${isActive
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+              >
+                <i className={`fas ${tab.icon} text-[11px]`}></i>
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Sub Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <p className="text-slate-500 dark:text-slate-400 text-lg font-medium leading-relaxed max-w-2xl">
+          {view === 'make-money' && "Statistical decisions to scale revenue and plug financial leaks."}
+          {view === 'opportunities' && "Surface hidden anomalies and performance deltas across segments."}
+          {view === 'proof-reports' && "Export mathematically-grounded reports for clients or stakeholders."}
+        </p>
         <div className="flex shrink-0 gap-4">
-          <div className="bg-white border border-slate-200 p-2 rounded-2xl shadow-sm flex items-center gap-3">
-            <select value={selectedJobId} onChange={e => setSelectedJobId(e.target.value)} className="bg-slate-50 px-4 py-2 rounded-xl text-xs font-bold text-slate-800 outline-none">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-2xl shadow-sm flex items-center gap-3">
+            <select value={selectedJobId} onChange={e => setSelectedJobId(e.target.value)} className="bg-slate-50 dark:bg-slate-700 px-4 py-2 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 outline-none">
               {jobs.map(j => <option key={j.id} value={j.id}>{j.fileName}</option>)}
             </select>
           </div>
-          <button onClick={() => setShowSetup(true)} className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-400 hover:text-indigo-600 shadow-sm"><i className="fas fa-sliders"></i></button>
+          <button onClick={() => setShowSetup(true)} className="w-12 h-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl flex items-center justify-center text-slate-400 hover:text-indigo-600 shadow-sm"><i className="fas fa-sliders"></i></button>
         </div>
       </div>
 

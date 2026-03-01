@@ -7,7 +7,7 @@ import { PricingModal } from './PricingModal';
 import { CreditBalance } from './CreditBalance';
 import { ThemeToggle } from './ThemeToggle';
 
-export type AppView = 'dashboard' | 'settings' | 'lab-make-money' | 'lab-opportunities' | 'lab-proof-reports' | 'profile' | 'reports';
+export type AppView = 'dashboard' | 'settings' | 'monetization-lab' | 'profile' | 'reports';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -82,8 +82,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChan
         <button
           onClick={onClick || (() => onViewChange(view))}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-200 relative ${isActive
-              ? `${c.bg} ${c.text} shadow-sm`
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/50'
+            ? `${c.bg} ${c.text} shadow-sm`
+            : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/50'
             }`}
         >
           {/* Active accent bar */}
@@ -97,11 +97,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChan
     );
   };
 
-  const labItems: { id: AppView; label: string; icon: string; color: string }[] = [
-    { id: 'lab-make-money', label: 'Make Money', icon: 'fa-sack-dollar', color: 'emerald' },
-    { id: 'lab-opportunities', label: 'Opportunities', icon: 'fa-radar', color: 'amber' },
-    { id: 'lab-proof-reports', label: 'Proof Reports', icon: 'fa-file-shield', color: 'purple' },
-  ];
+
 
   return (
     <div className="flex h-screen bg-[#f8fafc] overflow-hidden font-sans">
@@ -152,19 +148,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChan
             </NavTooltip>
           </div>
 
-          {/* Monetization Lab Section */}
+          {/* Monetization Lab */}
           <div className="space-y-1">
             {isSidebarOpen && (
-              <span className="px-3 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] mb-2 block">Monetization Lab</span>
+              <span className="px-3 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] mb-2 block">Tools</span>
             )}
             {!isSidebarOpen && (
               <div className="flex justify-center mb-2">
                 <div className="w-6 h-px bg-slate-200 dark:bg-slate-700 rounded-full"></div>
               </div>
             )}
-            {labItems.map(item => (
-              <NavItem key={item.id} view={item.id} icon={item.icon} label={item.label} accentColor={item.color} />
-            ))}
+            <NavItem view="monetization-lab" icon="fa-flask" label="Monetization Lab" accentColor="emerald" />
           </div>
 
           {/* Reports & Navigation */}

@@ -1,6 +1,4 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
+// Setup Guide: https://deno.land/manual/getting_started/setup_your_environment
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -12,92 +10,138 @@ const corsHeaders = {
 
 interface OrderRequest {
     type: 'subscription' | 'credit_pack';
-    itemId: string; // planType (solo, pro) or packId (1_report, etc)
+    itemId: string;
 }
 
 const PLANS = {
-    'pro': { price: 1000, currency: 'USD' },    // $10 in cents
-    'agency': { price: 5000, currency: 'USD' },  // $50 in cents
+    'pro': { razorpay_plan_id: 'plan_SLEPj9zq2QzgR8', price: 84900, currency: 'INR' },    // ₹849
+    'agency': { razorpay_plan_id: 'plan_SLER0JQ19whDD9', price: 424900, currency: 'INR' },  // ₹4,249
 }
 
+const CREDIT_PACKS = {
+    '10_credits': { price: 44900, currency: 'INR' },  // ₹449
+    '50_credits': { price: 169900, currency: 'INR' }, // ₹1,699
+}
+
+
 serve(async (req) => {
-    // Handle CORS
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
 
     try {
+        const authHeader = req.headers.get('Authorization')
+        if (!authHeader) {
+            console.error('Missing Authorization header')
+            throw new Error('Authentication required')
+        }
+
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+            { global: { headers: { Authorization: authHeader } } }
         )
 
-        // Get current user
         const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
         if (userError || !user) {
+            console.error('User auth error:', userError)
             throw new Error('Unauthorized')
         }
 
         const { type, itemId } = await req.json() as OrderRequest
+        console.log(`Processing ${type} order for user ${user.id}, item: ${itemId}`)
 
-        let amount = 0
-        let currency = 'USD'
-
-        // Calculate Price
-        if (type === 'subscription') {
-            const plan = PLANS[itemId as keyof typeof PLANS]
-            if (!plan) throw new Error('Invalid plan selection')
-            amount = plan.price
-            currency = plan.currency
-        } else {
-            throw new Error('Invalid payment type')
-        }
-
-        // Initialize Razorpay
-        // We fetch credentials from env. 
-        // Ideally use 'razorpay' npm package via esm.sh, but for simple order creation fetch is fine or lightweight wrapper
         const keyId = Deno.env.get('RAZORPAY_KEY_ID')
         const keySecret = Deno.env.get('RAZORPAY_KEY_SECRET')
 
         if (!keyId || !keySecret) {
-            console.error('Razorpay keys missing')
-            throw new Error('Server configuration error')
+            console.error('CRITICAL: Razorpay keys missing from environment variables')
+            throw new Error('Server configuration error: Payment provider not configured')
         }
 
-        // Call Razorpay API to create order
-        // Basic Auth
         const auth = btoa(`${keyId}:${keySecret}`)
+        let resultData: any = {}
 
-        const razorpayResp = await fetch('https://api.razorpay.com/v1/orders', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Basic ${auth}`
-            },
-            body: JSON.stringify({
-                amount: amount,
-                currency: currency,
-                receipt: `receipt_${user.id.slice(0, 8)}_${Date.now()}`,
-                notes: {
-                    userId: user.id,
-                    type,
-                    itemId
-                }
+        if (type === 'subscription') {
+            const plan = PLANS[itemId as keyof typeof PLANS]
+            if (!plan) {
+                console.error(`Invalid plan: ${itemId}. Available:`, Object.keys(PLANS))
+                throw new Error('Invalid plan selection')
+            }
+
+            console.log(`Creating subscription for plan: ${plan.razorpay_plan_id}`)
+            const razorpayResp = await fetch('https://api.razorpay.com/v1/subscriptions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${auth}`
+                },
+                body: JSON.stringify({
+                    plan_id: plan.razorpay_plan_id,
+                    total_count: 1200, // 100 years worth of monthly cycles
+                    quantity: 1,
+                    customer_notify: 1,
+                    notes: { userId: user.id, type, itemId }
+                })
             })
-        })
 
-        if (!razorpayResp.ok) {
-            const errorText = await razorpayResp.text()
-            console.error('Razorpay Error:', errorText)
-            throw new Error('Failed to create order with payment provider')
+            if (!razorpayResp.ok) {
+                const errorText = await razorpayResp.text()
+                console.error('Razorpay Subscription API Error:', errorText)
+                throw new Error(`Razorpay Error: ${errorText}`)
+            }
+
+            const subscriptionData = await razorpayResp.json()
+            console.log(`Razorpay subscription created: ${subscriptionData.id}`)
+
+            resultData = {
+                subscriptionId: subscriptionData.id,
+                amount: plan.price,
+                currency: plan.currency,
+                keyId: keyId
+            }
+
+        } else if (type === 'credit_pack') {
+            const pack = CREDIT_PACKS[itemId as keyof typeof CREDIT_PACKS]
+            if (!pack) {
+                console.error(`Invalid credit pack: ${itemId}. Available:`, Object.keys(CREDIT_PACKS))
+                throw new Error('Invalid credit pack selection')
+            }
+
+            const razorpayResp = await fetch('https://api.razorpay.com/v1/orders', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${auth}`
+                },
+                body: JSON.stringify({
+                    amount: pack.price,
+                    currency: pack.currency,
+                    receipt: `rcpt_${user.id.slice(0, 8)}_${Date.now()}`,
+                    notes: { userId: user.id, type, itemId }
+                })
+            })
+
+            if (!razorpayResp.ok) {
+                const errorText = await razorpayResp.text()
+                console.error('Razorpay Order API Error:', errorText)
+                throw new Error(`Razorpay Error: ${errorText}`)
+            }
+
+            const orderData = await razorpayResp.json()
+            console.log(`Razorpay order created: ${orderData.id}`)
+
+            resultData = {
+                orderId: orderData.id,
+                amount: pack.price,
+                currency: pack.currency,
+                keyId: keyId
+            }
+        } else {
+            throw new Error('Invalid payment type')
         }
 
-        const orderData = await razorpayResp.json()
-
-        // Log pending transaction to Database
-        // We need service role to insert potentially if RLS is strict, but user should be able to view their own.
-        // However, since we removed "insert own transactions", we MUST use service_role client here to insert.
+        // Log transaction in database
         const supabaseAdmin = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -105,36 +149,32 @@ serve(async (req) => {
 
         const { error: dbError } = await supabaseAdmin
             .from('payment_transactions')
-            .insert({
-                id: orderData.id, // Use Razorpay order_id as our ID
+            .upsert({
+                id: resultData.orderId || resultData.subscriptionId,
                 user_id: user.id,
-                amount: amount / 100, // Store as main unit
-                currency: currency,
+                amount: resultData.amount / 100,
+                currency: resultData.currency,
                 payment_type: type === 'subscription' ? 'subscription' : 'report_credit',
                 status: 'pending'
             })
 
         if (dbError) {
-            console.error('DB Insert Error:', dbError)
-            throw new Error('Failed to log transaction')
+            console.error('Database Error (payment_transactions):', dbError)
         }
 
         return new Response(
-            JSON.stringify({
-                orderId: orderData.id,
-                amount: amount,
-                currency: currency,
-                keyId: keyId // Send keyId to client to initialize checkout
-            }),
+            JSON.stringify(resultData),
             {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 200
             }
         )
 
-    } catch (error) {
+    } catch (error: any) {
+        const msg = error?.message || String(error);
+        console.error('create-order error:', msg)
         return new Response(
-            JSON.stringify({ error: error.message }),
+            JSON.stringify({ error: msg }),
             {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 400
@@ -142,3 +182,4 @@ serve(async (req) => {
         )
     }
 })
+

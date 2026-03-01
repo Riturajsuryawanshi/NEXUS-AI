@@ -10,7 +10,7 @@ export const PLANS: Record<PlanType, PlanConfig> = {
         price: 0,
         originalPrice: 0,
         discount: 0,
-        currency: 'USD',
+        currency: 'INR',
         features: [
             '3 Reports / month',
             'Basic 11-section analysis',
@@ -22,10 +22,10 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     pro: {
         id: 'pro',
         label: 'Pro',
-        price: 10,
-        originalPrice: 20,
+        price: 849,
+        originalPrice: 1699,
         discount: 50,
-        currency: 'USD',
+        currency: 'INR',
         features: [
             '50 Reports / month',
             'Full AI-powered analysis',
@@ -34,15 +34,16 @@ export const PLANS: Record<PlanType, PlanConfig> = {
             'AI business suggestions',
             'Priority processing',
         ],
-        limits: { clients: 10, reportsPerMonth: 50, canExport: true, whiteLabel: false }
+        limits: { clients: 10, reportsPerMonth: 50, canExport: true, whiteLabel: false },
+        paymentUrl: 'https://rzp.io/rzp/hbaQFRC'
     },
     agency: {
         id: 'agency',
         label: 'Agency',
-        price: 50,
-        originalPrice: 100,
+        price: 4249,
+        originalPrice: 8499,
         discount: 50,
-        currency: 'USD',
+        currency: 'INR',
         features: [
             'Unlimited reports',
             'Everything in Pro',
@@ -52,9 +53,11 @@ export const PLANS: Record<PlanType, PlanConfig> = {
             'Priority support',
             'Bulk URL analysis',
         ],
-        limits: { clients: 50, reportsPerMonth: 'unlimited', canExport: true, whiteLabel: true }
+        limits: { clients: 50, reportsPerMonth: 'unlimited', canExport: true, whiteLabel: true },
+        paymentUrl: 'https://rzp.io/rzp/uklJppfP'
     },
 };
+
 
 export class SubscriptionService {
 
@@ -66,9 +69,9 @@ export class SubscriptionService {
             .eq('status', 'active')
             .order('started_at', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 is 'not found'
+        if (error) {
             console.error('Error fetching subscription:', error);
             return null;
         }
@@ -90,9 +93,9 @@ export class SubscriptionService {
             .from('report_credits')
             .select('credits_available')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
-        if (error) {
+        if (error || !data) {
             // If no row exists, treat as 0 credits
             return 0;
         }
@@ -105,6 +108,10 @@ export class SubscriptionService {
             return await PaymentService.createOrder('subscription', planType);
         }
         return null;
+    }
+
+    static async createCreditOrder(packId: string): Promise<any> {
+        return await PaymentService.createOrder('credit_pack', packId);
     }
 
     static async consumeCredit(userId: string): Promise<boolean> {
@@ -146,17 +153,20 @@ export class SubscriptionService {
         return PLANS[planType]?.limits?.reportsPerMonth ?? 3;
     }
 
-    static async canGenerateReport(userId: string, planType: PlanType): Promise<{ allowed: boolean; used: number; limit: number | 'unlimited' }> {
+    static async canGenerateReport(userId: string, planType: PlanType): Promise<{ allowed: boolean; used: number; limit: number | 'unlimited'; hasCredits: boolean }> {
         const limit = this.getReportLimit(planType);
         if (limit === 'unlimited') {
-            return { allowed: true, used: 0, limit: 'unlimited' };
+            return { allowed: true, used: 0, limit: 'unlimited', hasCredits: true };
         }
 
         const used = await this.getMonthlyUsage(userId);
+        const credits = await this.getCredits(userId);
+
         return {
-            allowed: used < limit,
+            allowed: (used < limit) || (credits > 0),
             used,
-            limit
+            limit,
+            hasCredits: credits > 0
         };
     }
 }

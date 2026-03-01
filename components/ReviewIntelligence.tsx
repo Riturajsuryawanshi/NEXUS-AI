@@ -46,13 +46,20 @@ export const ReviewIntelligence: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<ReviewPipelineStep>('idle');
   const [audit, setAudit] = useState<ReviewAudit | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
   const [monthlyUsage, setMonthlyUsage] = useState(0);
   const [reportLimit, setReportLimit] = useState<number | 'unlimited'>(3);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ message, type });
+    toastTimerRef.current = setTimeout(() => setToast(null), 4000);
+  };
 
   // Subscribe to user profile changes and fetch usage
   useEffect(() => {
@@ -95,13 +102,26 @@ export const ReviewIntelligence: React.FC = () => {
 
     // --- CREDIT GATE ---
     if (userProfile) {
-      const { allowed } = await SubscriptionService.canGenerateReport(
+      const { allowed, used, limit, hasCredits } = await SubscriptionService.canGenerateReport(
         userProfile.userId,
         userProfile.planType || 'free'
       );
+
       if (!allowed) {
         setShowPricing(true);
         return;
+      }
+
+      // If we are over the monthly limit, we MUST have credits to proceed.
+      // canGenerateReport already checked this, so we just need to consume if over limit.
+      const isOverMonthlyLimit = limit !== 'unlimited' && used >= limit;
+      if (isOverMonthlyLimit && hasCredits) {
+        const consumed = await SubscriptionService.consumeCredit(userProfile.userId);
+        if (!consumed) {
+          setError('Failed to use credits. Please try again.');
+          return;
+        }
+        showToast('🪙 1 Credit used (Monthly limit reached)');
       }
     }
 
@@ -126,10 +146,11 @@ export const ReviewIntelligence: React.FC = () => {
             business_name: result.business_summary.name,
             audit_data: result
           });
-          console.log('[ReviewIntelligence] Report auto-saved to account');
+          showToast('✅ Report saved to My Reports');
         }
       } catch (saveErr) {
-        console.warn('[ReviewIntelligence] Auto-save failed, report still visible:', saveErr);
+        console.warn('[ReviewIntelligence] Auto-save failed:', saveErr);
+        showToast('Report generated but auto-save failed', 'error');
       }
 
       // Refresh usage count after successful generation
@@ -166,31 +187,8 @@ export const ReviewIntelligence: React.FC = () => {
     return () => window.removeEventListener('nexus:load-audit', handleLoadAudit);
   }, []);
 
-  const saveReport = async () => {
-    if (!audit) return;
-    setIsSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        alert("Please log in to save reports.");
-        return;
-      }
-
-      const { error } = await supabase.from('business_audits').insert({
-        user_id: user.id,
-        place_id: audit.business_summary.place_id,
-        business_name: audit.business_summary.name,
-        audit_data: audit
-      });
-
-      if (error) throw error;
-      alert("Report saved to your history!");
-    } catch (err: any) {
-      console.error("Save failed:", err);
-      alert("Failed to save report: " + err.message);
-    } finally {
-      setIsSaving(false);
-    }
+  const navigateToReports = () => {
+    window.dispatchEvent(new CustomEvent('nexus:navigate', { detail: 'reports' }));
   };
 
   const exportToPDF = async () => {
@@ -840,12 +838,11 @@ export const ReviewIntelligence: React.FC = () => {
         {audit && (
           <div className="flex gap-3 w-full md:w-auto">
             <button
-              onClick={saveReport}
-              disabled={isSaving}
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-sm disabled:opacity-50 text-sm"
+              onClick={navigateToReports}
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-sm text-sm"
             >
-              <i className={`fas ${isSaving ? 'fa-circle-notch fa-spin' : 'fa-save'}`}></i>
-              <span>{isSaving ? 'Saving...' : 'Save'}</span>
+              <i className="fas fa-folder-open"></i>
+              <span>My Reports</span>
             </button>
             <button
               onClick={exportToPDF}
@@ -935,6 +932,22 @@ export const ReviewIntelligence: React.FC = () => {
           </button>
         </form>
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed bottom-24 right-6 z-[200] animate-in slide-in-from-right-5 fade-in duration-300 max-w-sm`}>
+          <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-xl ${toast.type === 'success'
+            ? 'bg-emerald-50/95 dark:bg-emerald-950/90 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+            : 'bg-rose-50/95 dark:bg-rose-950/90 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+            }`}>
+            <i className={`fas ${toast.type === 'success' ? 'fa-check-circle text-emerald-500' : 'fa-exclamation-circle text-rose-500'} text-lg`}></i>
+            <span className="text-sm font-semibold">{toast.message}</span>
+            <button onClick={() => setToast(null)} className="ml-2 text-slate-400 hover:text-slate-600 transition-colors">
+              <i className="fas fa-times text-xs"></i>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Pricing Modal */}
       <PricingModal

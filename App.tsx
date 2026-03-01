@@ -69,11 +69,19 @@ const App: React.FC = () => {
     const handleSwitch = () => ClientService.setActiveClient(null);
     window.addEventListener('nexus:switch-client', handleSwitch);
 
+    // Listen for navigation events from components (e.g., ReviewIntelligence "My Reports" button)
+    const handleNavigate = (e: Event) => {
+      const view = (e as CustomEvent).detail as AppView;
+      if (view) setActiveView(view);
+    };
+    window.addEventListener('nexus:navigate', handleNavigate);
+
     return () => {
       unsubscribeAuth();
       unsubscribeJobs();
       unsubscribeClients();
       window.removeEventListener('nexus:switch-client', handleSwitch);
+      window.removeEventListener('nexus:navigate', handleNavigate);
     };
   }, []);
 
@@ -244,13 +252,8 @@ const App: React.FC = () => {
         );
       case 'settings':
         return <Settings />;
-      case 'lab-make-money':
-        return <MonetizationLab jobs={jobs} profile={profile!} client={activeClient!} view="make-money" />;
-      case 'lab-opportunities':
-        return <MonetizationLab jobs={jobs} profile={profile!} client={activeClient!} view="opportunities" />;
-
-      case 'lab-proof-reports':
-        return <MonetizationLab jobs={jobs} profile={profile!} client={activeClient!} view="proof-reports" />;
+      case 'monetization-lab':
+        return <MonetizationLab jobs={jobs} profile={profile!} client={activeClient!} />;
       case 'profile':
         return <ProfileView profile={profile!} />;
       case 'reports':

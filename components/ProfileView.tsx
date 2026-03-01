@@ -183,7 +183,41 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ profile }) => {
 
                                 <div>
                                     <div className="text-indigo-200/60 text-[10px] font-bold uppercase tracking-widest mb-1">AI Credits</div>
-                                    <div className="text-3xl font-mono font-bold text-white tracking-tight">{profile.aiCallsRemaining}</div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-3xl font-mono font-bold text-white tracking-tight">{profile.creditsAvailable || 0}</div>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    const order = await SubscriptionService.createCreditOrder('10_credits');
+                                                    const options = {
+                                                        key: order.keyId,
+                                                        amount: order.amount,
+                                                        currency: order.currency,
+                                                        name: 'Nexus Analyst',
+                                                        description: 'Buy 10 Report Credits',
+                                                        order_id: order.orderId,
+                                                        handler: function (response: any) {
+                                                            alert(`Credits Purchased! Payment ID: ${response.razorpay_payment_id}`);
+                                                            UserService.refreshProfile();
+                                                        },
+                                                        prefill: {
+                                                            name: profile.displayName || '',
+                                                            email: profile.email || '',
+                                                        },
+                                                        theme: { color: '#6366f1' }
+                                                    };
+                                                    const rzp = new (window as any).Razorpay(options);
+                                                    rzp.open();
+                                                } catch (err: any) {
+                                                    alert(err.message);
+                                                }
+                                            }}
+                                            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2"
+                                        >
+                                            <i className="fas fa-plus-circle text-indigo-400"></i>
+                                            Buy 10 Credits ($5)
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

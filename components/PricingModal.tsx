@@ -17,6 +17,13 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, cur
 
     const handleUpgrade = async (planType: PlanType) => {
         if (planType === 'free') return;
+
+        const plan = PLANS[planType];
+        if (plan.paymentUrl) {
+            window.location.href = plan.paymentUrl;
+            return;
+        }
+
         setLoading(true);
         try {
             const orderData = await SubscriptionService.createSubscriptionOrder(planType);
@@ -26,13 +33,12 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, cur
                 return;
             }
 
-            const options = {
+            const options: any = {
                 key: orderData.keyId,
                 amount: orderData.amount,
                 currency: orderData.currency,
                 name: 'Nexus Analyst',
                 description: `Upgrade to ${PLANS[planType]?.label} Plan`,
-                order_id: orderData.orderId,
                 handler: function (response: any) {
                     alert(`Payment Successful! Payment ID: ${response.razorpay_payment_id}`);
                     onClose();
@@ -46,6 +52,13 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, cur
                     color: '#6366f1'
                 }
             };
+
+            // Use subscription_id for recurring plans, order_id for one-time credits
+            if (orderData.subscriptionId) {
+                options.subscription_id = orderData.subscriptionId;
+            } else if (orderData.orderId) {
+                options.order_id = orderData.orderId;
+            }
 
             const rzp1 = new (window as any).Razorpay(options);
             rzp1.on('payment.failed', function (response: any) {
@@ -165,7 +178,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, cur
                                         {plan.discount > 0 && (
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className="line-through text-slate-400 dark:text-slate-500 text-lg font-semibold">
-                                                    ${plan.originalPrice}
+                                                    {plan.currency === 'INR' ? '₹' : '$'}{plan.originalPrice}
                                                 </span>
                                                 <span className={`text-xs font-black px-2 py-0.5 rounded-full ${colors.badge}`}>
                                                     {plan.discount}% OFF
@@ -174,7 +187,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, cur
                                         )}
                                         <div className="flex items-baseline gap-1">
                                             <span className="text-4xl font-black text-slate-900 dark:text-white transition-colors">
-                                                {plan.price === 0 ? 'Free' : `$${plan.price}`}
+                                                {plan.price === 0 ? 'Free' : `${plan.currency === 'INR' ? '₹' : '$'}${plan.price}`}
                                             </span>
                                             {plan.price > 0 && (
                                                 <span className="text-slate-400 font-medium">/month</span>
@@ -200,10 +213,10 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, cur
                                         onClick={() => handleUpgrade(planKey)}
                                         disabled={isCurrent || loading || planKey === 'free'}
                                         className={`w-full py-4 rounded-xl font-bold transition-all ${isCurrent
-                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 cursor-not-allowed border border-emerald-200 dark:border-emerald-800'
-                                                : planKey === 'free'
-                                                    ? `${colors.button} cursor-default`
-                                                    : `${colors.button} ${colors.buttonHover}`
+                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 cursor-not-allowed border border-emerald-200 dark:border-emerald-800'
+                                            : planKey === 'free'
+                                                ? `${colors.button} cursor-default`
+                                                : `${colors.button} ${colors.buttonHover}`
                                             }`}
                                     >
                                         {loading
@@ -232,7 +245,7 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, cur
                         </div>
                         <div className="flex items-center gap-2">
                             <i className="fas fa-globe text-purple-500"></i>
-                            <span>Works worldwide (USD)</span>
+                            <span>Secure Global Payments</span>
                         </div>
                     </div>
                 </div>
