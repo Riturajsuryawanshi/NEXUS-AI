@@ -1,5 +1,5 @@
 // Test script for create-order Edge Function
-const PROJECT_URL = 'https://kprssovriifzdzcufcmr.supabase.co'; // Replace with your actual project URL
+const PROJECT_URL = 'https://nexus-ai.jiobase.com'; // Replace with your actual project URL
 const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwcnNzb3ZyaWlmemR6Y3VmY21yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjA0NDcsImV4cCI6MjA4NjEzNjQ0N30.Rp3EahQ6f5WEsnHlDSAc-GDosu4Llj_hPa1hAfPSnZk'; // Replace with your actual anon key
 
 async function testCreateOrder() {
@@ -20,7 +20,7 @@ async function testCreateOrder() {
         const result = await response.json();
         console.log('Status:', response.status);
         console.log('Response:', result);
-        
+
         if (response.ok) {
             console.log('✅ Function is working correctly!');
         } else {

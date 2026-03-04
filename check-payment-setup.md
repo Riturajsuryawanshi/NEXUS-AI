@@ -34,7 +34,7 @@ After successful payment, check these tables:
 
 - Go to Razorpay Dashboard → Webhooks
 - Check webhook logs for successful delivery
-- Webhook URL should be: `https://kprssovriifzdzcufcmr.supabase.co/functions/v1/webhook`
+- Webhook URL should be: `https://nexus-ai.jiobase.com/functions/v1/webhook`
 
 ## Current Status: ✅ READY TO TEST
 

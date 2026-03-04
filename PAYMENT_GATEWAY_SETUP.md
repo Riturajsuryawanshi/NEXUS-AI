@@ -22,7 +22,7 @@ Add these to your `.env.local` file:
 
 ```env
 # Existing Supabase vars
-VITE_SUPABASE_URL=https://kprssovriifzdzcufcmr.supabase.co
+VITE_SUPABASE_URL=https://nexus-ai.jiobase.com
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 # Add Razorpay credentials (for frontend - optional, already loaded from backend)
@@ -73,7 +73,7 @@ npx supabase functions deploy webhook
 2. Click **Create New Webhook**
 3. Set **Webhook URL**:
    ```
-   https://kprssovriifzdzcufcmr.supabase.co/functions/v1/webhook
+   https://nexus-ai.jiobase.com/functions/v1/webhook
    ```
 4. Select Events:
    - ✅ `payment.captured`

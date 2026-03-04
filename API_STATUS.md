@@ -4,7 +4,7 @@
 
 ### 1. Supabase API
 - **Status**: ✅ Connected
-- **URL**: https://kprssovriifzdzcufcmr.supabase.co
+- **URL**: https://nexus-ai.jiobase.com
 - **Key**: Configured correctly
 
 ### 2. Gemini API Key

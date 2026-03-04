@@ -97,7 +97,7 @@ export class ReviewService {
     let aiInsights: ReviewAIInsight | null = null;
     try {
       if (preprocessResult.total_reviews > 0) {
-        const AI_TIMEOUT = 15000;
+        const AI_TIMEOUT = 10000;
         aiInsights = await Promise.race([
           this.generateAIInsights(preprocessResult),
           new Promise<null>((_, reject) => setTimeout(() => reject(new Error('AI timeout')), AI_TIMEOUT))
@@ -424,27 +424,19 @@ export class ReviewService {
     }
 
     // Basic Validation
-    if (!parsed.business_summary) {
+    if (!parsed.executive_summary) {
       throw new Error('AI response missing required fields');
     }
 
-    // Ensure all 11 sections have safe defaults
-    if (!parsed.what_people_like) parsed.what_people_like = [];
-    if (!parsed.what_people_dislike) parsed.what_people_dislike = [];
-    if (!parsed.opportunity_areas) parsed.opportunity_areas = [];
-    if (!parsed.complaint_clusters) parsed.complaint_clusters = [];
-    if (!parsed.improvement_priorities) parsed.improvement_priorities = [];
-    if (!parsed.strengths) parsed.strengths = [];
-    if (!parsed.weaknesses) parsed.weaknesses = [];
-    if (!parsed.operational_gaps) parsed.operational_gaps = [];
-    if (!parsed.priority_fixes) parsed.priority_fixes = [];
-    if (!parsed.business_overview) parsed.business_overview = { category: 'Business', review_volume_assessment: 'N/A' };
-    if (!parsed.sentiment_analysis) parsed.sentiment_analysis = { positive_percentage: 0, negative_percentage: 0, neutral_percentage: 0, repeat_complaints_percentage: 0, repeat_praises_percentage: 0, sentiment_summary: '' };
-    if (!parsed.reputation_risk) parsed.reputation_risk = { risk_level: 'medium', negative_review_type: 'mixed', management_responds: false, response_quality: 'absent', accountability_score: 5, summary: '' };
-    if (!parsed.competitive_positioning) parsed.competitive_positioning = { rating_vs_competitors: 'N/A', review_volume_vs_competitors: 'N/A', common_complaints_vs_industry: 'N/A', market_position_summary: '' };
-    if (!parsed.financial_impact) parsed.financial_impact = { risk_areas: [], overall_revenue_risk: 'N/A' };
-    if (!parsed.swot) parsed.swot = { strengths: [], weaknesses: [], opportunities: [], threats: [] };
-    if (!parsed.health_scores) parsed.health_scores = { service: 5, product: 5, management: 5, reputation: 5, operational_stability: 5, overall: 5, summary: '' };
+    // Ensure all 8 sections have safe defaults
+    if (!parsed.executive_summary) parsed.executive_summary = { rating: 0, total_reviews: 0, sentiment_score: 0, local_visibility_score: 0, summary_text: 'Pending analysis' };
+    if (!parsed.sentiment_analysis) parsed.sentiment_analysis = { positive_percent: 0, neutral_percent: 0, negative_percent: 0, trend_summary: 'Pending analysis' };
+    if (!parsed.top_positive_themes) parsed.top_positive_themes = [];
+    if (!parsed.top_complaints) parsed.top_complaints = [];
+    if (!parsed.competitor_comparison) parsed.competitor_comparison = [];
+    if (!parsed.reputation_risks) parsed.reputation_risks = [];
+    if (!parsed.revenue_opportunities) parsed.revenue_opportunities = [];
+    if (!parsed.action_plan) parsed.action_plan = [];
 
     this.setCache(aiCacheKey, parsed);
     return parsed;
@@ -462,26 +454,26 @@ export class ReviewService {
     // Always ensure we have AI insights — use deterministic fallback if AI failed
     const insights = aiInsights ?? this.buildDeterministicFallbackInsights(preprocess);
 
-    // Map AI clusters to legacy ReviewCluster format
-    const reviewClusters = insights?.complaint_clusters?.map((c) => ({
-      theme: c.theme,
-      frequency_percentage: 0,
+    // Map legacy fields for backwards compatibility with any remaining users of these structures before cleanup
+    const reviewClusters = insights?.top_complaints?.map((c) => ({
+      theme: c.problem,
+      frequency_percentage: c.frequency_percent,
       sentiment: 'negative' as const,
-      key_complaints_or_praises: [c.impact_explanation],
-      business_impact_estimate: c.frequency_indicator,
+      key_complaints_or_praises: [c.problem],
+      business_impact_estimate: `Severity Score: ${c.severity_score}/10`,
     })) || [];
 
     // Map legacy revenue leaks
-    const revenueLeaks = insights?.complaint_clusters?.slice(0, 3).map(c => ({
-      issue: c.theme,
-      potential_business_risk: c.impact_explanation,
-      recommended_fix: c.recommended_action,
+    const revenueLeaks = insights?.top_complaints?.slice(0, 3).map(c => ({
+      issue: c.problem,
+      potential_business_risk: `Severity Score: ${c.severity_score}/10`,
+      recommended_fix: "See action plan for details.",
     })) || [];
 
     // Map upsell opportunities
-    const upsells = (insights?.opportunity_areas || []).map(opt => ({
-      opportunity: opt,
-      supporting_review_pattern: 'Identified by review pattern analysis.'
+    const upsells = (insights?.revenue_opportunities || []).map(opt => ({
+      opportunity: opt.opportunity,
+      supporting_review_pattern: opt.expected_impact
     }));
 
     return {
@@ -502,12 +494,12 @@ export class ReviewService {
   }
 
   // ====================================================
-  // DETERMINISTIC FALLBACK — All 11 Sections Without AI
+  // DETERMINISTIC FALLBACK — All 8 Sections Without AI
   // ====================================================
 
   private static buildDeterministicFallbackInsights(p: ReviewPreprocessResult): ReviewAIInsight {
     const { average_rating, total_reviews, positive_review_percentage, negative_review_percentage,
-      sentiment_breakdown, top_keywords, business_name, business_industry } = p;
+      sentiment_breakdown, top_keywords, business_name } = p;
 
     const positivePct = sentiment_breakdown?.positive ?? positive_review_percentage ?? 60;
     const negativePct = sentiment_breakdown?.negative ?? negative_review_percentage ?? 30;
@@ -515,244 +507,53 @@ export class ReviewService {
     const positiveKeywords = top_keywords.filter((_, i) => i % 3 !== 1).slice(0, 5).map(k => k.word);
     const negativeKeywords = top_keywords.filter((_, i) => i % 3 === 1).slice(0, 5).map(k => k.word);
 
-    const riskLevel = negativePct > 40 ? 'high' : negativePct > 25 ? 'medium' : 'low';
-    const serviceScore = Math.min(10, Math.round(average_rating * 2));
-    const reputationScore = Math.round(10 - (negativePct / 10));
-    const overallScore = Math.round((serviceScore + reputationScore + serviceScore + reputationScore + serviceScore) / 5);
+    const severityScore = Math.max(1, Math.min(10, Math.round(negativePct / 5)));
 
     return {
-      business_overview: {
-        category: business_industry || 'Business',
-        sub_category: business_industry ? `${business_industry} Services` : 'General',
-        years_in_operation: total_reviews > 200 ? '3+ years' : total_reviews > 50 ? '1-2 years' : 'New business',
-        review_volume_assessment: total_reviews > 100
-          ? `High volume (${total_reviews} reviews) — statistically reliable`
-          : `Moderate volume (${total_reviews} reviews) — insights directional`,
+      executive_summary: {
+        rating: average_rating,
+        total_reviews: total_reviews,
+        sentiment_score: positivePct,
+        local_visibility_score: total_reviews > 100 ? 80 : 50,
+        summary_text: `${business_name} has a ${average_rating.toFixed(1)}★ average rating across ${total_reviews} reviews. Basic analysis generated due to AI unavailability.`
       },
-
       sentiment_analysis: {
-        positive_percentage: positivePct,
-        negative_percentage: negativePct,
-        neutral_percentage: neutralPct,
-        repeat_complaints_percentage: Math.round(negativePct * 0.6),
-        repeat_praises_percentage: Math.round(positivePct * 0.5),
-        sentiment_summary: `${positivePct}% of reviewers had positive experiences, while ${negativePct}% raised concerns. ` +
-          (negativePct > 30
-            ? `The elevated negative rate (${negativePct}%) warrants immediate operational attention.`
-            : `The sentiment profile indicates a generally well-received business with room for improvement.`),
+        positive_percent: positivePct,
+        neutral_percent: neutralPct,
+        negative_percent: negativePct,
+        trend_summary: negativePct > 30 ? "Elevated negative feedback observed." : "Generally positive feedback profile."
       },
-
-      strengths: positiveKeywords.length > 0 ? positiveKeywords.map((kw, i) => ({
+      top_positive_themes: positiveKeywords.map((kw, i) => ({
         theme: kw.charAt(0).toUpperCase() + kw.slice(1),
-        frequency: `Mentioned ${(total_reviews * 0.3 * (1 / (i + 1))).toFixed(0)}+ times`,
-        description: `Customers consistently highlight "${kw}" as a standout aspect of their experience.`,
-        sample_quotes: [`"The ${kw} here is genuinely impressive."`, `"Best ${kw} I've experienced in the area."`],
-      })) : [{
-        theme: 'Customer Satisfaction',
-        frequency: `${positivePct}% positive reviews`,
-        description: `Overall customer satisfaction rate of ${positivePct}% indicates strong core performance.`,
-        sample_quotes: [`"Overall a good experience worth recommending."`],
-      }],
-
-      weaknesses: negativeKeywords.length > 0 ? negativeKeywords.map((kw, i) => ({
-        category: i === 0 ? 'Service Issues' : i === 1 ? 'Wait Time' : 'Management',
-        theme: kw.charAt(0).toUpperCase() + kw.slice(1) + ' Concerns',
-        frequency: `Appears in ~${Math.round(negativePct * 0.4)}% of negative reviews`,
-        recency: 'Present across multiple review periods',
-        is_increasing: i === 0 && negativePct > 25,
-        description: `Recurring mentions of "${kw}" in negative reviews suggest a systematic issue requiring attention.`,
-      })) : [{
-        category: 'General',
-        theme: 'Inconsistency',
-        frequency: `${negativePct}% negative reviews`,
-        recency: 'Ongoing',
-        is_increasing: false,
-        description: 'Some customers report inconsistent experiences that differ from the business\'s usual standard.',
-      }],
-
-      operational_gaps: [
-        {
-          complaint: 'Inconsistent service quality across visits',
-          business_problem: 'Lack of standardized service protocols',
-          root_cause: 'Staff training gaps or high turnover rate',
-        },
-        {
-          complaint: 'Wait times during peak hours',
-          business_problem: 'Capacity management and scheduling inefficiencies',
-          root_cause: 'Understaffing at peak hours or poor queue management',
-        },
-        {
-          complaint: 'Management responsiveness to complaints',
-          business_problem: 'Absence of structured feedback loop',
-          root_cause: 'No formal complaint resolution process in place',
-        },
-      ],
-
-      reputation_risk: {
-        risk_level: riskLevel as any,
-        negative_review_type: negativePct > 30 ? 'Mixed emotional and factual' : 'Primarily isolated incidents',
-        management_responds: false,
-        response_quality: 'absent',
-        accountability_score: Math.max(1, 10 - Math.round(negativePct / 10)),
-        summary: `With ${negativePct}% negative reviews and a ${average_rating.toFixed(1)}★ average rating, ` +
-          (riskLevel === 'high'
-            ? `this business faces significant reputation risk. Immediate intervention is recommended.`
-            : riskLevel === 'medium'
-              ? `this business faces moderate reputation risk. Proactive response management would help.`
-              : `reputation risk appears low. Continue monitoring for any emerging patterns.`),
-      },
-
-      competitive_positioning: {
-        rating_vs_competitors: average_rating >= 4.5
-          ? `Above average — ${average_rating.toFixed(1)}★ puts this business in the top tier`
-          : average_rating >= 4.0
-            ? `At par with competitors — ${average_rating.toFixed(1)}★ is the industry benchmark`
-            : `Below average — ${average_rating.toFixed(1)}★ is under the 4.0★ industry standard`,
-        review_volume_vs_competitors: total_reviews > 200 ? 'High visibility — strong review presence' : total_reviews > 50 ? 'Moderate presence — growing review base' : 'Low volume — needs more reviews to build credibility',
-        common_complaints_vs_industry: negativePct > 35
-          ? 'Complaint rate is above industry norm — service consistency is a key differentiator in this market'
-          : 'Complaint rate is within industry range — focus on converting neutrals to advocates',
-        market_position_summary: average_rating >= 4.2
-          ? `Strong market position with a ${average_rating.toFixed(1)}★ rating. ${business_name} is well-positioned to capture premium customers.`
-          : `Mid-market position. Improving the ${average_rating.toFixed(1)}★ rating by 0.3-0.5 stars could significantly shift customer acquisition.`,
-      },
-
-      financial_impact: {
-        risk_areas: [
-          {
-            issue: 'Lost customers from negative reviews',
-            customer_segment_affected: 'First-time visitors researching online',
-            estimated_revenue_impact: `${Math.round(negativePct * 0.8)}-${Math.round(negativePct * 1.2)}% loss in new customer acquisition`,
-            explanation: `Negative reviews directly reduce click-through from Google Maps listings, impacting new customer flow.`,
-          },
-          {
-            issue: 'Repeat customer churn',
-            customer_segment_affected: 'Existing customers with negative experiences',
-            estimated_revenue_impact: `${Math.round(negativePct * 0.5)}% reduction in repeat visits`,
-            explanation: 'Each dissatisfied customer represents lost lifetime value and potential negative word-of-mouth.',
-          },
-          ...(negativePct > 30 ? [{
-            issue: 'Premium pricing power erosion',
-            customer_segment_affected: 'Price-sensitive segments',
-            estimated_revenue_impact: '10-15% margin compression risk',
-            explanation: 'High negative rates make it harder to justify premium pricing, forcing discounting.',
-          }] : []),
-        ],
-        overall_revenue_risk: negativePct > 35
-          ? `HIGH revenue risk. The ${negativePct}% negative rate is actively costing this business new and returning customers. Estimated 20-30% revenue upside if resolved.`
-          : negativePct > 20
-            ? `MEDIUM revenue risk. Addressing the ${negativePct}% negative rate could unlock 10-20% growth in repeat customers.`
-            : `LOW revenue risk. Current performance is solid — focus on amplifying positives to further grow revenue.`,
-      },
-
-      priority_fixes: [
-        {
-          priority: 'critical',
-          issue: 'Respond to all negative reviews publicly',
-          action_steps: [
-            'Audit all unanswered 1-2★ reviews from the past 6 months',
-            'Create a 5-sentence response template: Acknowledge, Apologize, Investigate, Resolve, Invite back',
-            'Assign a team member to respond within 24 hours of every new review',
-          ],
-        },
-        {
-          priority: 'critical',
-          issue: `Address the top complaint theme: ${negativeKeywords[0] || 'service consistency'}`,
-          action_steps: [
-            'Conduct a root cause analysis with frontline staff',
-            'Implement a daily checklist to standardize the experience',
-            'Review within 30 days to measure improvement',
-          ],
-        },
-        {
-          priority: 'medium',
-          issue: 'Build a proactive review generation strategy',
-          action_steps: [
-            'Ask satisfied customers for reviews at the moment of peak satisfaction',
-            'Use SMS/email follow-up (with customer consent) to request feedback',
-            `Target increasing from ${total_reviews} to ${Math.round(total_reviews * 1.5)} reviews in 90 days`,
-          ],
-        },
-        {
-          priority: 'medium',
-          issue: 'Double down on verified strengths in marketing',
-          action_steps: [
-            `Use "${positiveKeywords[0] || 'quality'}" and "${positiveKeywords[1] || 'service'}" as core marketing messages`,
-            'Feature real customer quotes in social media and local ads',
-            'Create a highlight reel from 5-star reviews for your website',
-          ],
-        },
-        {
-          priority: 'low',
-          issue: 'Improve online visibility',
-          action_steps: [
-            'Ensure Google Business Profile photos are updated (every 90 days)',
-            'Add accurate opening hours, menu/services, and new offerings',
-            'Respond to Q&A section on Google Maps listing',
-          ],
-        },
-      ],
-
-      swot: {
-        strengths: [
-          `${positivePct}% positive review rate indicates strong customer satisfaction`,
-          `${positiveKeywords.slice(0, 2).join(' and ') || 'Service quality'} consistently praised by customers`,
-          total_reviews > 100 ? `Strong review volume (${total_reviews}) builds social proof and trust` : `Established presence with ${total_reviews} reviews`,
-        ],
-        weaknesses: [
-          `${negativePct}% negative review rate — above the 15% industry threshold for concern`,
-          `${negativeKeywords[0] || 'Service consistency'} issues recurring across multiple reviews`,
-          'No visible management responses to negative feedback detected',
-        ],
-        opportunities: [
-          `Closing the gap to 4.5★ rating could move the listing to top 3 in local search`,
-          `Loyal customer base (${Math.round(positivePct * 0.3)}% repeat praise rate) can be leveraged for referrals`,
-          'Addressing operational gaps could unlock a 15-25% improvement in repeat customer rate',
-        ],
-        threats: [
-          `Competitors with higher ratings (4.5★+) increasingly capturing search traffic`,
-          `Sustained negative reviews risk triggering Google\'s algorithm demotion`,
-          'Review bombing risk if unresolved complaints escalate on social media',
-        ],
-      },
-
-      health_scores: {
-        service: serviceScore,
-        product: Math.min(10, Math.round(serviceScore * 0.95)),
-        management: Math.max(1, reputationScore - 2),
-        reputation: reputationScore,
-        operational_stability: Math.max(1, serviceScore - 1),
-        overall: overallScore,
-        summary: overallScore >= 7
-          ? `${business_name} is in good health with a ${average_rating.toFixed(1)}★ rating. Strengthen reputation management to reach elite status.`
-          : overallScore >= 5
-            ? `${business_name} shows mixed signals. Core product is solid but operational and reputation issues are holding back growth.`
-            : `${business_name} needs urgent attention. The ${negativePct}% negative rate and ${average_rating.toFixed(1)}★ rating indicate systemic issues.`,
-      },
-
-      // Legacy fields
-      business_summary: `${business_name} has a ${average_rating.toFixed(1)}★ average rating across ${total_reviews} reviews. ` +
-        `${positivePct}% of customers report positive experiences, while ${negativePct}% raised concerns. ` +
-        `Key themes include ${positiveKeywords.slice(0, 2).join(', ')} (praise) and ${negativeKeywords.slice(0, 2).join(', ') || 'service consistency'} (complaints).`,
-      what_people_like: positiveKeywords.slice(0, 5).map(k => `${k.charAt(0).toUpperCase() + k.slice(1)} quality`),
-      what_people_dislike: negativeKeywords.slice(0, 5).map(k => `${k.charAt(0).toUpperCase() + k.slice(1)} issues`),
-      complaint_clusters: negativeKeywords.slice(0, 3).map((kw, i) => ({
-        theme: kw.charAt(0).toUpperCase() + kw.slice(1),
-        frequency_indicator: `~${Math.round(negativePct * 0.3 * (1 / (i + 1)))}% of reviews`,
-        impact_explanation: `Repeated mentions suggest this is a systemic issue affecting customer satisfaction.`,
-        recommended_action: `Investigate root cause and implement a 30-day improvement plan.`,
+        frequency: Math.round(positivePct / (i + 2)),
+        description: `Customers frequently praise the ${kw}.`
       })),
-      revenue_risk_summary: `The ${negativePct}% negative review rate represents meaningful revenue risk, particularly in new customer acquisition.`,
-      improvement_priorities: [
-        `Respond to all negative reviews within 24 hours`,
-        `Resolve the top complaint theme: "${negativeKeywords[0] || 'service quality'}"`,
-        `Build a proactive review generation strategy`,
+      top_complaints: negativeKeywords.map((kw, i) => ({
+        problem: kw.charAt(0).toUpperCase() + kw.slice(1) + ' Issues',
+        frequency_percent: Math.round(negativePct / (i + 2)),
+        severity_score: severityScore
+      })),
+      competitor_comparison: [
+        { metric: "Rating", your_business: average_rating.toFixed(1), competitor_avg: "4.2" },
+        { metric: "Review Count", your_business: total_reviews, competitor_avg: "150" }
       ],
-      opportunity_areas: [
-        `Amplify "${positiveKeywords[0] || 'service'}" in marketing — it\'s your strongest differentiator`,
-        `Convert neutral (${neutralPct}%) reviewers to advocates through follow-up`,
-        `Close the 0.5★ gap to 4.5★ to unlock top search placement`,
+      reputation_risks: [
+        {
+          problem: "Negative sentiment ratio",
+          frequency_percent: negativePct,
+          severity_score: severityScore
+        }
       ],
+      revenue_opportunities: [
+        {
+          opportunity: "Improve response rate",
+          expected_impact: "Could improve rating by converting 1-star to 3-star reviews."
+        }
+      ],
+      action_plan: [
+        { timeline_week: "Week 1", action: "Review all 1 and 2 star feedback from the past month." },
+        { timeline_week: "Week 2", action: "Address the most frequent operational complaint." }
+      ]
     };
   }
 

@@ -1,7 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://kprssovriifzdzcufcmr.supabase.co'
+const supabaseUrl = 'https://nexus-ai.jiobase.com'
 const supabaseServiceRoleKey = 'ecc90af8807d369a3ee08fb19d588ddd7f32ccfa8173cd314c07515e31f7c99c'
 
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)

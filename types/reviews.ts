@@ -30,145 +30,62 @@ export interface ReviewPreprocessResult {
 }
 
 // ============================================
-// 11-Section AI Insight Types
+// 8-Section AI Insight Types (Consultant Level)
 // ============================================
 
-/** Section 1: Business Overview */
-export interface BusinessOverview {
-    category: string;
-    sub_category?: string;
-    years_in_operation?: string;
-    review_volume_assessment: string; // e.g. "High volume (5000+ reviews) — statistically reliable"
+export interface ExecutiveSummary {
+    rating: number;
+    total_reviews: number;
+    sentiment_score: number;
+    local_visibility_score: number;
+    summary_text: string;
 }
 
-/** Section 2: Sentiment Breakdown */
 export interface SentimentAnalysis {
-    positive_percentage: number;
-    negative_percentage: number;
-    neutral_percentage: number;
-    repeat_complaints_percentage: number;
-    repeat_praises_percentage: number;
-    sentiment_summary: string;
+    positive_percent: number;
+    neutral_percent: number;
+    negative_percent: number;
+    trend_summary: string;
 }
 
-/** Section 3: Strengths */
-export interface StrengthItem {
+export interface ThemeInsight {
     theme: string;
-    frequency: string; // e.g. "Mentioned 45+ times"
-    description: string;
-    sample_quotes: string[];
-}
-
-/** Section 4: Weaknesses */
-export interface WeaknessItem {
-    category: string; // Service, Hygiene, Pricing, etc.
-    theme: string;
-    frequency: string;
-    recency: string; // e.g. "Increasing in last 3 months"
-    is_increasing: boolean;
+    frequency: number; // percentage or count
     description: string;
 }
 
-/** Section 5: Operational Gaps */
-export interface OperationalGap {
-    complaint: string;
-    business_problem: string;
-    root_cause: string;
+export interface ComplaintInsight {
+    problem: string;
+    frequency_percent: number;
+    severity_score: number; // 1-10
 }
 
-/** Section 6: Reputation Risk */
-export interface ReputationRisk {
-    risk_level: 'low' | 'medium' | 'high' | 'critical';
-    negative_review_type: string; // "emotional" or "factual"
-    management_responds: boolean;
-    response_quality: string; // "professional", "defensive", "absent"
-    accountability_score: number; // 1-10
-    summary: string;
+export interface CompetitorComparison {
+    metric: string;
+    your_business: string | number;
+    competitor_avg: string | number;
 }
 
-/** Section 7: Competitive Positioning */
-export interface CompetitivePositioning {
-    rating_vs_competitors: string;
-    review_volume_vs_competitors: string;
-    common_complaints_vs_industry: string;
-    market_position_summary: string;
+export interface RevenueOpportunity {
+    opportunity: string;
+    expected_impact: string;
 }
 
-/** Section 8: Financial Impact */
-export interface FinancialImpact {
-    risk_areas: {
-        issue: string;
-        customer_segment_affected: string;
-        estimated_revenue_impact: string;
-        explanation: string;
-    }[];
-    overall_revenue_risk: string;
+export interface ActionPlanStep {
+    timeline_week: string; // e.g. "Week 1"
+    action: string;
 }
 
-/** Section 9: Priority Fix */
-export interface PriorityFix {
-    priority: 'critical' | 'medium' | 'low';
-    issue: string;
-    action_steps: string[];
-}
-
-/** Section 10: SWOT */
-export interface SWOTAnalysis {
-    strengths: string[];
-    weaknesses: string[];
-    opportunities: string[];
-    threats: string[];
-}
-
-/** Section 11: Health Scores */
-export interface HealthScores {
-    service: number; // 1-10
-    product: number;
-    management: number;
-    reputation: number;
-    operational_stability: number;
-    overall: number;
-    summary: string;
-}
-
-/** Complete AI Insight (all 11 sections) */
+/** Complete AI Insight (8 sections) */
 export interface ReviewAIInsight {
-    // Section 1
-    business_overview: BusinessOverview;
-    // Section 2
+    executive_summary: ExecutiveSummary;
     sentiment_analysis: SentimentAnalysis;
-    // Section 3
-    strengths: StrengthItem[];
-    // Section 4
-    weaknesses: WeaknessItem[];
-    // Section 5
-    operational_gaps: OperationalGap[];
-    // Section 6
-    reputation_risk: ReputationRisk;
-    // Section 7
-    competitive_positioning: CompetitivePositioning;
-    // Section 8
-    financial_impact: FinancialImpact;
-    // Section 9
-    priority_fixes: PriorityFix[];
-    // Section 10
-    swot: SWOTAnalysis;
-    // Section 11
-    health_scores: HealthScores;
-
-    // Legacy fields (kept for backward compat)
-    business_summary: string;
-    what_people_like: string[];
-    what_people_dislike: string[];
-    complaint_clusters: {
-        theme: string;
-        frequency_indicator: string;
-        impact_explanation: string;
-        recommended_action: string;
-    }[];
-    revenue_risk_summary: string;
-    improvement_priorities: string[];
-    opportunity_areas: string[];
+    top_positive_themes: ThemeInsight[];
+    top_complaints: ComplaintInsight[];
+    competitor_comparison: CompetitorComparison[];
+    reputation_risks: ComplaintInsight[]; // maps to section 5
+    revenue_opportunities: RevenueOpportunity[];
+    action_plan: ActionPlanStep[];
 }
 
 /** Legacy compatibility types */

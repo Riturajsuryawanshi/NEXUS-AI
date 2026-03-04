@@ -131,7 +131,15 @@ export class GeminiService {
   }
 
   static async generateReviewInsights(preprocessedData: object): Promise<string> {
-    const systemInstruction = `You are a world-class Business Intelligence Analyst specializing in review-based business audits. You analyze pre-processed review data to produce founder-level strategic insights.
+    const systemInstruction = `You are a senior business analyst and local SEO consultant.
+
+Your job is to analyze a business using its Google Maps data including reviews, rating, photos, and business metadata.
+
+Your analysis must be structured like a professional consulting report.
+
+Focus on actionable insights that help businesses improve customer satisfaction, visibility, and revenue.
+
+Avoid generic summaries. Provide quantified insights whenever possible.
 
 STRICT RULES:
 - You must ONLY use the data provided in the input JSON.
@@ -140,123 +148,86 @@ STRICT RULES:
 - Every insight must be data-backed and actionable.
 - Be specific, not generic. Reference actual review patterns.`;
 
-    const prompt = `Analyze this pre-processed business review data and produce a comprehensive 11-section business intelligence report.
+    const prompt = `Analyze this pre-processed business review data and produce a comprehensive business intelligence report.
 
 INPUT DATA:
 ${JSON.stringify(preprocessedData)}
 
+Perform the following analysis:
+1. Customer sentiment breakdown
+2. Top positive themes customers mention
+3. Top complaints and their frequency
+4. Reputation score based on reviews
+5. Competitor comparison (estimate based on industry norms if specific competitor data is absent)
+6. Google Maps visibility score
+7. Pricing perception analysis
+8. Operational weaknesses
+9. Customer experience strengths
+10. Revenue growth opportunities
+
 OUTPUT: Return ONLY a valid JSON object matching this EXACT schema:
 
 {
-  "business_overview": {
-    "category": "string (e.g. Restaurant, Hotel, Salon)",
-    "sub_category": "string (e.g. Fine Dining, Budget Hotel)",
-    "years_in_operation": "string (estimate from review dates, e.g. '3+ years')",
-    "review_volume_assessment": "string (e.g. 'High volume — statistically reliable')"
+  "executive_summary": {
+    "rating": number,
+    "total_reviews": number,
+    "sentiment_score": number (0-100),
+    "local_visibility_score": number (0-100),
+    "summary_text": "string (2-3 concise sentences)"
   },
   "sentiment_analysis": {
-    "positive_percentage": number,
-    "negative_percentage": number,
-    "neutral_percentage": number,
-    "repeat_complaints_percentage": number,
-    "repeat_praises_percentage": number,
-    "sentiment_summary": "string (2-3 sentence analysis)"
+    "positive_percent": number,
+    "neutral_percent": number,
+    "negative_percent": number,
+    "trend_summary": "string"
   },
-  "strengths": [
+  "top_positive_themes": [
     {
-      "theme": "string (e.g. Staff Behavior, Food Quality)",
-      "frequency": "string (e.g. 'Mentioned 45+ times')",
-      "description": "string (1-2 sentence explanation)",
-      "sample_quotes": ["string (direct review quotes)"]
-    }
-  ],
-  "weaknesses": [
-    {
-      "category": "string (Service Issues / Staff Behavior / Hygiene / Pricing / Wait Time / Management)",
       "theme": "string",
-      "frequency": "string (e.g. 'Appears in 20% of negative reviews')",
-      "recency": "string (e.g. 'Increasing in recent months')",
-      "is_increasing": boolean,
+      "frequency": number,
       "description": "string"
     }
   ],
-  "operational_gaps": [
+  "top_complaints": [
     {
-      "complaint": "string (actual customer complaint pattern)",
-      "business_problem": "string (translated business issue)",
-      "root_cause": "string (systemic cause)"
+      "problem": "string",
+      "frequency_percent": number,
+      "severity_score": number (1-10)
     }
   ],
-  "reputation_risk": {
-    "risk_level": "low|medium|high|critical",
-    "negative_review_type": "string (emotional vs factual)",
-    "management_responds": boolean,
-    "response_quality": "string (professional / defensive / absent)",
-    "accountability_score": number (1-10),
-    "summary": "string (2-3 sentences)"
-  },
-  "competitive_positioning": {
-    "rating_vs_competitors": "string",
-    "review_volume_vs_competitors": "string",
-    "common_complaints_vs_industry": "string",
-    "market_position_summary": "string"
-  },
-  "financial_impact": {
-    "risk_areas": [
-      {
-        "issue": "string",
-        "customer_segment_affected": "string (e.g. families, business travelers)",
-        "estimated_revenue_impact": "string (e.g. '25-35% loss in family customers')",
-        "explanation": "string"
-      }
-    ],
-    "overall_revenue_risk": "string (overall assessment)"
-  },
-  "priority_fixes": [
+  "competitor_comparison": [
     {
-      "priority": "critical|medium|low",
-      "issue": "string",
-      "action_steps": ["string (specific actionable step)"]
+      "metric": "string (e.g. Rating, Reviews, Response rate, Photo count)",
+      "your_business": "string or number",
+      "competitor_avg": "string or number"
     }
   ],
-  "swot": {
-    "strengths": ["string (top 3 from reviews)"],
-    "weaknesses": ["string (most frequent negative patterns)"],
-    "opportunities": ["string (what they can double down on)"],
-    "threats": ["string (what could damage long-term brand)"]
-  },
-  "health_scores": {
-    "service": number (1-10),
-    "product": number (1-10),
-    "management": number (1-10),
-    "reputation": number (1-10),
-    "operational_stability": number (1-10),
-    "overall": number (1-10, weighted average),
-    "summary": "string (1-2 sentence verdict)"
-  },
-  "business_summary": "string (executive summary paragraph)",
-  "what_people_like": ["string (bullet points of praise)"],
-  "what_people_dislike": ["string (bullet points of complaints)"],
-  "complaint_clusters": [
+  "reputation_risks": [
     {
-      "theme": "string",
-      "frequency_indicator": "string",
-      "impact_explanation": "string",
-      "recommended_action": "string"
+      "problem": "string",
+      "frequency_percent": number,
+      "severity_score": number (1-10)
     }
   ],
-  "revenue_risk_summary": "string",
-  "improvement_priorities": ["string (prioritized action items)"],
-  "opportunity_areas": ["string (growth opportunities)"]
+  "revenue_opportunities": [
+    {
+      "opportunity": "string",
+      "expected_impact": "string"
+    }
+  ],
+  "action_plan": [
+    {
+      "timeline_week": "string (e.g. 'Week 1')",
+      "action": "string"
+    }
+  ]
 }
 
 IMPORTANT:
-- Include at least 3-5 items in strengths, weaknesses, operational_gaps, and priority_fixes
-- Include at least 3 items in SWOT lists  
-- Include 2-4 financial impact risk areas
-- All health scores should be between 1-10
-- Be specific about the business, don't give generic advice
-- priority_fixes should have at least 2 critical, 2 medium, and 1 low priority items`;
+- Keep ALL descriptions and summaries EXTREMELY short (1 sentence max).
+- Include EXACTLY 3 items in top_positive_themes, top_complaints, and revenue_opportunities.
+- Action plan MUST span exactly 4 weeks.
+- Faster, concise generation is CRITICAL. Short & punchy wins.`;
 
     try {
       const responseText = await this.callEdgeFunction('gemini-proxy', {
