@@ -1,5 +1,69 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { UserProfile } from '../types';
+import { WordRotate } from './ui/word-rotate';
+import { InfiniteTextMarquee } from './ui/infinite-text-marquee';
+import { VideoScrollHero } from './ui/video-scroll-hero';
+import { StickyScroll } from './ui/sticky-scroll-reveal';
+import { TestimonialsSection } from './ui/testimonials-section';
+import { AnimatedTestimonials } from './ui/testimonial';
+import { ScrollRevealText } from './ui/scroll-reveal-text';
+import { SpotlightSection } from './ui/spotlight-section';
+import { MagneticText } from './ui/morphing-cursor';
+
+const nexusTestimonials = [
+  {
+    src: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1888&auto=format&fit=crop',
+    quote: "Nexus AI has completely transformed our data pipeline. We can now generate deterministic reports at scale without any manual intervention.",
+    name: 'James Wilson',
+    designation: 'Lead Data Scientist at QuantumLeap',
+  },
+  {
+    src: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?q=80&w=2070&auto=format&fit=crop',
+    quote: "The strategic thinking behind their intelligence datasets is unparalleled. Our growth has been exponential since the integration.",
+    name: 'Sarah Drasner',
+    designation: 'VP of Product at NexusLink',
+  },
+  {
+    src: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1888&auto=format&fit=crop',
+    quote: "Scaling engineering teams is hard, but scaling insights is harder. Nexus AI does both with remarkable efficiency.",
+    name: 'Marcus Thorne',
+    designation: 'CEO at DataStream Inc.',
+  },
+  {
+    src: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?q=80&w=1887&auto=format&fit=crop',
+    quote: "I was skeptical about AI-driven analytics, but Nexus proved that precision and speed can indeed go hand in hand.",
+    name: 'Kenji Tanaka',
+    designation: 'Software Engineer at CodeCrafters',
+  },
+  {
+    src: 'https://images.unsplash.com/photo-1557053910-d9eadeed1c58?q=80&w=1887&auto=format&fit=crop',
+    quote: "The visualization engine in Nexus is a game-changer. Our board meetings are now powered by real-time, interactive insights.",
+    name: 'David Lee',
+    designation: 'Data Architect at Global Analytics',
+  },
+];
+
+const howItWorks = [
+  {
+    title: "Upload Data",
+    description: "Drag & drop your CSV or Excel files. We handle messy headers and formatting instantly.",
+    image: "https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?auto=format&fit=crop&q=80&w=1200",
+    metric: "Step 01"
+  },
+  {
+    title: "AI Processing",
+    description: "Our dual-brain engine cleans data and detects patterns using deterministic logic.",
+    image: "https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&q=80&w=1200",
+    metric: "Step 02"
+  },
+  {
+    title: "Get Insights",
+    description: "Receive a comprehensive report with charts, trends, and business recommendations.",
+    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=1200",
+    metric: "Step 03"
+  }
+];
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -30,396 +94,328 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-600 overflow-x-hidden selection:bg-purple-500 selection:text-white font-sans">
+    <div className="min-h-screen bg-white text-slate-600 selection:bg-purple-500 selection:text-white font-sans">
 
       {/* Navbar */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6'}`}>
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer group">
-            <div className="w-10 h-10 bg-gradient-to-tr from-nexus-600 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-nexus-500/30 group-hover:scale-110 transition-transform duration-300">
-              <i className="fas fa-bolt"></i>
-            </div>
-            <span className="text-2xl font-display font-black text-slate-900 tracking-tighter">Nexus<span className="text-nexus-600">Analyst</span></span>
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-5' : 'bg-transparent py-8'}`}>
+        <div className="max-w-[1800px] mx-auto px-6 grid grid-cols-3 items-center">
+          
+          {/* Left: Menu Button */}
+          <div className="flex justify-start">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="group flex items-center gap-3 px-6 py-2 rounded-full bg-purple-100 hover:bg-purple-200 transition-all duration-300"
+            >
+              <span className="text-[10px] font-black tracking-[0.2em] uppercase text-purple-900">
+                {mobileMenuOpen ? 'Close' : 'Menu'}
+              </span>
+              <div className="flex flex-col gap-1 w-4">
+                <span className={`h-0.5 bg-purple-900 transition-all duration-300 ${mobileMenuOpen ? 'rotate-45 translate-y-1' : ''}`}></span>
+                <span className={`h-0.5 bg-purple-900 transition-all duration-300 ${mobileMenuOpen ? 'opacity-0' : ''}`}></span>
+                <span className={`h-0.5 bg-purple-900 transition-all duration-300 ${mobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''}`}></span>
+              </div>
+            </button>
           </div>
 
-          {/* Mobile Hamburger Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors"
-            aria-label="Toggle menu"
-          >
-            <i className={`fas ${mobileMenuOpen ? 'fa-times' : 'fa-bars'}`}></i>
-          </button>
+          {/* Center: Nexus Logo */}
+          <div className="flex justify-center flex-col items-center gap-1 cursor-pointer group" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-tr from-nexus-600 to-purple-600 rounded-lg flex items-center justify-center text-white font-black text-xl shadow-lg shadow-nexus-500/20 group-hover:scale-110 transition-transform duration-500">
+                N
+              </div>
+              <span className="text-2xl font-display font-black text-slate-900 tracking-tighter">Nexus<span className="text-nexus-600">Analyst</span></span>
+            </div>
+          </div>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-8">
-            <button onClick={() => scrollToSection('features')} className="text-sm font-semibold text-slate-500 hover:text-purple-600 transition-colors">Features</button>
-            <button onClick={() => scrollToSection('how-it-works')} className="text-sm font-semibold text-slate-500 hover:text-purple-600 transition-colors">How it works</button>
-            <button onClick={() => scrollToSection('features')} className="text-sm font-semibold text-slate-500 hover:text-purple-600 transition-colors">Pricing</button>
-            <div className="w-px h-6 bg-slate-200"></div>
+          {/* Right: Actions */}
+          <div className="flex justify-end items-center gap-4">
             {profile ? (
               <button
                 onClick={onEnterApp}
-                className="flex items-center gap-3 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 group"
+                className="px-6 py-2.5 bg-slate-900 text-white rounded-full text-xs font-black tracking-widest uppercase hover:bg-nexus-600 transition-all duration-300 shadow-xl shadow-slate-900/10"
               >
-                <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] text-white">
-                  {profile.userId.charAt(0).toUpperCase()}
-                </div>
-                <span>Go to Studio</span>
-                <i className="fas fa-arrow-right text-xs"></i>
+                Enter App
               </button>
             ) : (
-              <div className="flex items-center gap-4">
-                <button onClick={onLogin} className="text-sm font-bold text-slate-600 hover:text-nexus-700 transition-colors">Sign In</button>
-                <button onClick={onGetStarted} className="px-6 py-2.5 bg-nexus-900 text-white rounded-xl text-sm font-bold hover:bg-nexus-700 hover:shadow-lg hover:shadow-nexus-500/30 transition-all hover:-translate-y-0.5">
+              <div className="flex items-center gap-3">
+                <button onClick={onLogin} className="hidden sm:block text-xs font-black tracking-widest uppercase text-slate-900 hover:text-nexus-600 transition-colors">Sign In</button>
+                <button onClick={onGetStarted} className="px-6 py-2.5 bg-slate-900 text-white rounded-full text-xs font-black tracking-widest uppercase hover:bg-nexus-600 transition-all duration-300 shadow-xl shadow-900/10">
                   Get Started
                 </button>
               </div>
             )}
           </div>
         </div>
+        
+        {/* Cinematic Visual Menu Overlay */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="fixed inset-0 z-[60] bg-nexus-cream p-6 overflow-y-auto"
+            >
+              <div className="max-w-[1800px] mx-auto">
+                {/* Menu Header (Mirroring Navbar) */}
+                <div className="grid grid-cols-3 items-center mb-24 py-8">
+                  <div className="flex justify-start">
+                    <button
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="group flex items-center gap-3 px-8 py-3 rounded-full bg-slate-900 text-white hover:bg-nexus-600 transition-all duration-300 shadow-xl shadow-slate-900/10"
+                    >
+                      <span className="text-[10px] font-black tracking-[0.2em] uppercase">Close</span>
+                      <div className="flex flex-col gap-1 w-4">
+                        <span className="h-0.5 bg-white rotate-45 translate-y-1 transition-all"></span>
+                        <span className="h-0.5 bg-white -rotate-45 -translate-y-1 transition-all"></span>
+                      </div>
+                    </button>
+                  </div>
 
-        {/* Mobile Nav Dropdown */}
-        {mobileMenuOpen && (
-          <div className="md:hidden mt-2 mx-4 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 p-6 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-            <button onClick={() => scrollToSection('features')} className="block w-full text-left px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors">Features</button>
-            <button onClick={() => scrollToSection('how-it-works')} className="block w-full text-left px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors">How it works</button>
-            <button onClick={() => scrollToSection('features')} className="block w-full text-left px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-xl transition-colors">Pricing</button>
-            <div className="h-px bg-slate-100"></div>
-            {profile ? (
-              <button
-                onClick={() => { setMobileMenuOpen(false); onEnterApp?.(); }}
-                className="w-full px-4 py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all"
-              >
-                Go to Studio <i className="fas fa-arrow-right ml-2 text-xs"></i>
-              </button>
-            ) : (
-              <div className="flex flex-col gap-3">
-                <button onClick={() => { setMobileMenuOpen(false); onLogin(); }} className="w-full px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-colors">Sign In</button>
-                <button onClick={() => { setMobileMenuOpen(false); onGetStarted(); }} className="w-full px-4 py-3 bg-nexus-900 text-white rounded-xl text-sm font-bold hover:bg-nexus-700 transition-all">
-                  Get Started
-                </button>
+                  <div className="flex justify-center flex-col items-center gap-1 cursor-pointer" onClick={() => { setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-tr from-nexus-600 to-purple-600 rounded-lg flex items-center justify-center text-white font-black text-xl shadow-lg shadow-nexus-500/20">
+                        N
+                      </div>
+                      <span className="text-2xl font-display font-black text-slate-900 tracking-tighter">Nexus<span className="text-nexus-600">Analyst</span></span>
+                    </div>
+                  </div>
+                  <div></div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+                  {[
+                    { title: "WORK", desc: "Capabilities & Portfolio", img: "https://images.unsplash.com/photo-1639322537231-2f206e06af84?auto=format&fit=crop&q=80&w=800", link: "#how-it-works" },
+                    { title: "ENGINE", desc: "The Deterministic Logic", img: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&q=80&w=800", link: "#how-it-works" },
+                    { title: "PHILOSOPHY", desc: "Intelligence Policy", img: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=800", link: "#testimonials" },
+                    { title: "PARTNERSHIP", desc: "Start a Collaboration", img: "https://images.unsplash.com/photo-1557426272-fc759fbbad47?auto=format&fit=crop&q=80&w=800", link: "#" }
+                  ].map((item, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 + i * 0.1, duration: 0.8 }}
+                      className="group cursor-pointer"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        if (item.link.startsWith('#')) scrollToSection(item.link.substring(1));
+                      }}
+                    >
+                      <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden mb-8 shadow-xl shadow-slate-200/50">
+                        <img 
+                          src={item.img} 
+                          alt={item.title} 
+                          className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700 ease-out"
+                        />
+                        <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-transparent transition-colors duration-500"></div>
+                      </div>
+                      <h4 className="text-5xl font-impact text-slate-900 tracking-tighter uppercase mb-2 group-hover:text-nexus-600 transition-colors">
+                        {item.title}
+                      </h4>
+                      <p className="text-xl font-accent italic text-slate-500 flex items-center gap-2">
+                        {item.desc}
+                        <span className="w-6 h-6 rounded-full border border-slate-200 flex items-center justify-center text-[10px] transform group-hover:rotate-45 group-hover:bg-slate-900 group-hover:text-white transition-all duration-300">
+                          <i className="fas fa-arrow-up rotate-45"></i>
+                        </span>
+                      </p>
+                    </motion.div>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap justify-center md:justify-end gap-x-12 gap-y-6 pt-12 border-t border-slate-200">
+                  <button onClick={() => scrollToSection('features')} className="text-xs font-black tracking-widest uppercase text-slate-400 hover:text-slate-900 transition-colors">Pricing</button>
+                  <button onClick={() => scrollToSection('how-it-works')} className="text-xs font-black tracking-widest uppercase text-slate-400 hover:text-slate-900 transition-colors">Platform</button>
+                  <button onClick={() => scrollToSection('features')} className="text-xs font-black tracking-widest uppercase text-slate-400 hover:text-slate-900 transition-colors">Careers</button>
+                  <button onClick={() => scrollToSection('testimonials')} className="text-xs font-black tracking-widest uppercase text-slate-400 hover:text-slate-900 transition-colors">Testimonials</button>
+                  <button onClick={() => scrollToSection('features')} className="text-xs font-black tracking-widest uppercase text-slate-400 hover:text-slate-900 transition-colors">Press</button>
+                  <button onClick={onLogin} className="text-xs font-black tracking-widest uppercase text-purple-600 hover:text-purple-900 transition-colors">Customer Portal</button>
+                </div>
               </div>
-            )}
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-40 pb-20 overflow-hidden">
-        {/* Background Orbs - Static */}
-        <div className="absolute top-0 inset-x-0 h-[600px] pointer-events-none">
-          <div className="absolute top-[-100px] left-[10%] w-[500px] h-[500px] bg-nexus-200/40 rounded-full blur-[100px] mix-blend-multiply animate-pulse-slow"></div>
-          <div className="absolute top-[-100px] right-[10%] w-[500px] h-[500px] bg-purple-200/40 rounded-full blur-[100px] mix-blend-multiply animate-pulse-slow delay-700"></div>
-          <div className="absolute top-[20%] left-[30%] w-[400px] h-[400px] bg-pink-200/40 rounded-full blur-[100px] mix-blend-multiply animate-pulse-slow delay-1000"></div>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-50 border border-purple-100 text-purple-700 text-xs font-bold uppercase tracking-wider mb-8 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-            AI Data Engine v2.0
-          </div>
-
-          <h1 className="text-5xl md:text-7xl font-display font-black text-slate-900 tracking-tight leading-tight mb-6 animate-slide-up">
-            Data analysis, <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-nexus-600 to-purple-600">purified.</span>
+      <section className="relative pt-32 pb-24 md:pt-48 md:pb-32 bg-nexus-cream overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 relative z-10 text-center flex flex-col items-center">
+          
+          <h1 className="text-7xl md:text-[180px] font-impact text-slate-900 leading-[0.85] tracking-tight uppercase mb-8">
+            <span className="block mb-2 whitespace-nowrap">Transforming Data into</span>
+            <span className="inline-flex items-center gap-4">
+              <WordRotate 
+                words={["Insights", "Strategy", "Intelligence", "Growth"]} 
+                className="text-7xl md:text-[180px] font-impact"
+              />
+              <span className="elegant-ampersand text-[0.8em] lowercase transform -translate-y-4">&amp;</span>
+              Action
+            </span>
           </h1>
 
-          <p className="max-w-2xl mx-auto text-xl text-slate-500 leading-relaxed mb-10">
-            Upload your raw CSVs and let our deterministic AI engine clean, analyze, and visualize your data in seconds. No code required.
-          </p>
+          <div className="max-w-3xl mx-auto text-3xl md:text-5xl font-accent italic text-slate-800 leading-tight mb-12 px-4">
+            At Nexus AI, we go beyond simple metrics. <br />
+            We form strategic intelligence across datasets to position your business for exponential growth.
+          </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
             <button
               onClick={profile && onEnterApp ? onEnterApp : onGetStarted}
-              className="px-8 py-4 bg-nexus-900 text-white rounded-2xl text-lg font-bold hover:bg-nexus-700 shadow-xl shadow-nexus-900/20 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+              className="px-12 py-5 bg-nexus-lavender text-slate-900 rounded-full text-sm font-bold tracking-widest uppercase hover:bg-slate-900 hover:text-white transition-all duration-300 hover:scale-105 active:scale-95 shadow-sm"
             >
-              Start Analyzing Free
-              <i className="fas fa-arrow-right"></i>
-            </button>
-            <button
-              onClick={() => scrollToSection('how-it-works')}
-              className="px-8 py-4 bg-white text-slate-900 border border-slate-200 rounded-2xl text-lg font-bold hover:bg-slate-50 flex items-center gap-2"
-            >
-              <i className="fas fa-play text-purple-600 text-xs"></i>
-              See How It Works
+              Get Started
             </button>
           </div>
 
-          {/* Hero Image / Dashboard Preview */}
-          <div className="mt-20 relative max-w-5xl mx-auto animate-fade-in delay-200">
-            <div className="absolute -inset-1 bg-gradient-to-r from-nexus-500 to-purple-600 rounded-[2.5rem] blur opacity-20 animate-pulse"></div>
-            <div className="relative bg-white rounded-[2rem] border border-slate-200 shadow-2xl overflow-hidden aspect-[16/9] flex items-center justify-center bg-slate-50">
-              <div className="w-full h-full p-6 md:p-10 flex flex-col">
-                {/* Mock Dashboard Header */}
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center"><i className="fas fa-bolt text-white text-xs"></i></div>
-                    <div className="h-3 w-24 bg-slate-200 rounded-full"></div>
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="h-3 w-16 bg-slate-200 rounded-full"></div>
-                    <div className="h-3 w-16 bg-purple-200 rounded-full"></div>
-                  </div>
-                </div>
-                {/* Mock Stats Row */}
-                <div className="grid grid-cols-4 gap-3 mb-6">
-                  {['#e0eaff', '#f3e8ff', '#d1fae5', '#fef3c7'].map((bg, i) => (
-                    <div key={i} className="rounded-xl p-3" style={{ backgroundColor: bg }}>
-                      <div className="h-2 w-8 bg-white/60 rounded mb-2"></div>
-                      <div className="h-4 w-12 bg-white/80 rounded"></div>
-                    </div>
-                  ))}
-                </div>
-                {/* Mock Chart Area */}
-                <div className="flex-1 flex items-end gap-2 px-4">
-                  {[40, 65, 35, 80, 55, 70, 45, 90, 60, 75].map((h, i) => (
-                    <div key={i} className="flex-1 rounded-t-lg transition-all" style={{ height: `${h}%`, backgroundColor: i === 7 ? '#6366f1' : '#e2e8f0' }}></div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Spacer to show more of the cream background */}
+          <div className="h-24 md:h-32"></div>
         </div>
-      </section>
+    </section>
 
-      {/* How it Works Section */}
-      <section id="how-it-works" className="py-32 bg-slate-50 relative">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl font-display font-black text-slate-900 mb-4">How it works</h2>
-            <p className="text-lg text-slate-500 max-w-2xl mx-auto">Go from raw data to actionable insights in three simple steps.</p>
-          </div>
+    {/* Marquee Section */}
+    <section className="bg-white border-y border-slate-100 overflow-hidden relative z-20">
+      <InfiniteTextMarquee
+        text="NEXUS AI • DATA ANALYSIS PURIFIED • DETERMINISTIC INTELLIGENCE • SCALE FASTER • NEXUS AI"
+        speed={25}
+        fontSize="6rem"
+        tooltipText="The Future of Insight 🚀"
+        hoverColor="#2542ff"
+        showTooltip={true}
+      />
+    </section>
 
-          <div className="grid md:grid-cols-3 gap-12 relative">
-            {/* Connector Line (Desktop) */}
-            <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-indigo-200 via-purple-200 to-indigo-200 border-t-2 border-dashed border-slate-300 z-0"></div>
+    {/* Video Scroll Section */}
+    <VideoScrollHero 
+      videoSrc="https://assets.mixkit.co/videos/preview/mixkit-abstract-glowing-digital-particles-background-27453-large.mp4"
+      className="bg-nexus-cream"
+    />
 
-            {[
-              { step: 1, icon: 'fa-cloud-upload-alt', title: 'Upload Data', desc: 'Drag & drop your CSV or Excel files. We handle messy headers and formatting instantly.' },
-              { step: 2, icon: 'fa-microchip', title: 'AI Processing', desc: 'Our dual-brain engine cleans data and detects patterns using deterministic logic.' },
-              { step: 3, icon: 'fa-chart-pie', title: 'Get Insights', desc: 'Receive a comprehensive report with charts, trends, and business recommendations.' }
-            ].map((item, i) => (
-              <div key={i} className="relative z-10 flex flex-col items-center text-center group">
-                <div className="w-24 h-24 bg-white rounded-3xl shadow-xl shadow-purple-500/5 flex items-center justify-center text-4xl text-indigo-600 mb-8 border border-slate-100">
-                  <i className={`fas ${item.icon}`}></i>
-                  <div className="absolute -top-3 -right-3 w-8 h-8 bg-slate-900 text-white rounded-full flex items-center justify-center font-bold text-sm border-4 border-slate-50">
-                    {item.step}
-                  </div>
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">{item.title}</h3>
-                <p className="text-slate-500 leading-relaxed px-4">{item.desc}</p>
-              </div>
-            ))}
-          </div>
+    {/* How It Works Sticky Scroll Section */}
+    <StickyScroll 
+      id="how-it-works"
+      content={howItWorks} 
+      title={<>How it<br />works</>}
+      description="Go from raw data to actionable insights in three simple steps."
+    />
+
+    {/* Testimonials Section */}
+    <TestimonialsSection />
+
+    {/* Scroll Reveal Typography Section */}
+    <ScrollRevealText 
+      line1="Unparalleled Intelligence" 
+      line2="Redefining the Future of Data."
+      className="bg-white"
+    />
+
+    {/* Animated Testimonials Section */}
+    <section className="py-12 bg-nexus-cream relative overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="text-center mb-16">
+          <h2 className="text-sm font-bold tracking-[0.4em] uppercase text-nexus-600 mb-4 px-2">Voice of the Experts</h2>
+          <p className="text-slate-400 font-accent italic text-lg">Swipe to hear from our global network</p>
         </div>
-      </section>
+        <AnimatedTestimonials testimonials={nexusTestimonials} />
+      </div>
+    </section>
 
       {/* Features Grid (Bento) */}
-      <section id="features" className="py-32 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 md:grid-rows-2 gap-6 md:h-[600px]">
-
-            {/* Feature 1 */}
-            <div className="md:row-span-2 rounded-[2.5rem] bg-slate-50 border border-slate-100 p-10 flex flex-col justify-between overflow-hidden relative group hover:shadow-xl">
-              <div>
-                <div className="w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-2xl mb-6">
-                  <i className="fas fa-brain"></i>
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">Deterministic Core</h3>
-                <p className="text-slate-500 leading-relaxed">Math doesn't lie. We use statistical proofs to ensure every insight is 100% accurate, unlike hallucinating LLMs.</p>
-              </div>
-              <div className="rounded-2xl mt-8 bg-indigo-100/50 border border-indigo-200/50 p-6 flex items-end gap-2 h-48">
-                {[30, 55, 25, 70, 45, 60, 35, 80].map((h, i) => (
-                  <div key={i} className="flex-1 rounded-t-md bg-indigo-300/60" style={{ height: `${h}%` }}></div>
-                ))}
-              </div>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="md:col-span-2 rounded-[2.5rem] bg-purple-600 text-white p-10 flex flex-col md:flex-row items-center gap-10 overflow-hidden relative group">
-              <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white/10 rounded-full blur-[100px] pointer-events-none"></div>
-              <div className="flex-1 relative z-10">
-                <h3 className="text-3xl font-bold mb-4">Lightning Fast</h3>
-                <p className="text-purple-100 text-lg">Process gigabytes of data in seconds. Our serverless infrastructure scales infinitely to meet your workload.</p>
-              </div>
-              <div className="flex-1 w-full bg-white/10 rounded-2xl h-48 backdrop-blur-sm border border-white/20 p-6 flex flex-col justify-end">
-                <div className="flex gap-2 items-end justify-between h-32">
-                  <div className="w-8 bg-white/40 h-[40%] rounded-t-lg"></div>
-                  <div className="w-8 bg-white/60 h-[70%] rounded-t-lg"></div>
-                  <div className="w-8 bg-white/30 h-[30%] rounded-t-lg"></div>
-                  <div className="w-8 bg-white h-[90%] rounded-t-lg shadow-[0_0_20px_rgba(255,255,255,0.5)]"></div>
-                  <div className="w-8 bg-white/50 h-[50%] rounded-t-lg"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="rounded-[2.5rem] bg-slate-900 text-white p-8 relative overflow-hidden group">
-              <i className="fas fa-shield-alt text-6xl text-slate-800 absolute -bottom-4 -right-4"></i>
-              <h3 className="text-xl font-bold mb-2 relative z-10">Enterprise Security</h3>
-              <p className="text-slate-400 text-sm relative z-10">SOC2 Type II Ready. End-to-end encryption for all your data.</p>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="rounded-[2.5rem] bg-indigo-50 border border-indigo-100 p-8 relative group hover:border-indigo-300">
-              <h3 className="text-xl font-bold text-indigo-900 mb-2">Universal Export</h3>
-              <p className="text-indigo-700 text-sm">Download as PDF, Excel, or Sync to Sheets.</p>
-              <div className="absolute bottom-6 right-6 flex gap-2">
-                <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-green-600"><i className="fas fa-file-excel"></i></div>
-                <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-red-500"><i className="fas fa-file-pdf"></i></div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="py-32 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl font-display font-black text-slate-900 mb-4">Trusted by Data Teams</h2>
-            <p className="text-lg text-slate-500 max-w-2xl mx-auto">See what professionals say about NexusAnalyst</p>
+      <section className="py-48 bg-nexus-cream relative overflow-hidden flex flex-col items-center text-center">
+        <div className="max-w-[95vw] mx-auto px-6 flex flex-col items-center">
+          <div className="flex flex-col items-center justify-center mb-12">
+             <h2 className="text-[clamp(3rem,8vw,12rem)] font-impact text-slate-900 leading-[0.85] tracking-tighter uppercase w-full max-w-7xl">
+                Your Success Deserves A
+             </h2>
+             <div className="mt-4">
+               <MagneticText 
+                 text="DEDICATED PARTNER." 
+                 hoverText="DETERMINISTIC RESULTS." 
+                 textClassName="text-[clamp(3rem,8vw,12rem)] leading-[0.85] uppercase"
+               />
+             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { name: 'Sarah Chen', role: 'Data Analyst at TechCorp', text: 'Cut our data processing time from hours to minutes. The accuracy is incredible.', rating: 5 },
-              { name: 'Michael Rodriguez', role: 'Business Intelligence Lead', text: 'Finally, a tool that understands messy real-world data. Game changer for our team.', rating: 5 },
-              { name: 'Emily Watson', role: 'Research Scientist', text: 'The deterministic approach gives me confidence in every insight. No more guesswork.', rating: 5 }
-            ].map((testimonial, i) => (
-              <div key={i} className="bg-white rounded-3xl p-8 shadow-lg border border-slate-100">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, j) => (
-                    <i key={j} className="fas fa-star text-yellow-400"></i>
-                  ))}
-                </div>
-                <p className="text-slate-600 mb-6 leading-relaxed">"{testimonial.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                    {testimonial.name.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="font-bold text-slate-900">{testimonial.name}</div>
-                    <div className="text-sm text-slate-500">{testimonial.role}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="max-w-3xl space-y-8 mt-12">
+            <p className="text-2xl md:text-3xl font-accent italic text-slate-600 leading-snug">
+              Your challenges are as unique as your data—so why settle for one-size-fits-all solutions? 
+              We customize our approach to ensure long-term, scalable success.
+            </p>
+            <p className="text-lg md:text-xl text-slate-400 font-accent italic">
+              Move beyond traditional analytics and embrace a partnership built for the future of intelligence.
+            </p>
+          </div>
+
+          <div className="mt-24">
+            <button className="px-20 py-8 bg-slate-900 text-white rounded-full text-xl font-bold tracking-[0.2em] uppercase hover:bg-nexus-lavender hover:text-slate-900 transition-all duration-700 shadow-2xl hover:scale-105 active:scale-95">
+              Initiate Partnership
+            </button>
           </div>
         </div>
-      </section>
 
-      {/* Stats Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid md:grid-cols-4 gap-8 text-center">
-            {[
-              { value: '10M+', label: 'Rows Processed' },
-              { value: '99.9%', label: 'Accuracy Rate' },
-              { value: '5000+', label: 'Active Users' },
-              { value: '<2s', label: 'Avg Response Time' }
-            ].map((stat, i) => (
-              <div key={i} className="p-6">
-                <div className="text-4xl font-black text-slate-900 mb-2">{stat.value}</div>
-                <div className="text-slate-500 font-semibold">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-32 bg-gradient-to-br from-indigo-600 to-purple-600 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-20"></div>
-        <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
-          <h2 className="text-5xl font-display font-black text-white mb-6">Ready to transform your data?</h2>
-          <p className="text-xl text-indigo-100 mb-10">Join thousands of analysts who trust NexusAnalyst for accurate, fast insights.</p>
-          <button
-            onClick={profile && onEnterApp ? onEnterApp : onGetStarted}
-            className="px-10 py-5 bg-white text-slate-900 rounded-2xl text-lg font-bold hover:bg-slate-100 shadow-2xl inline-flex items-center gap-3"
-          >
-            Get Started for Free
-            <i className="fas fa-arrow-right"></i>
-          </button>
-          <p className="text-indigo-200 text-sm mt-6">No credit card required • Free tier available</p>
-        </div>
+        {/* Decorative Background Accent */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[100vw] bg-nexus-lavender/5 rounded-full blur-[150px] pointer-events-none -z-10" />
       </section>
 
       {/* Footer */}
-      <footer className="py-16 border-t border-slate-200 bg-white">
+      {/* Antigravity Style Footer */}
+      <footer className="py-16 bg-nexus-cream border-t border-nexus-100 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid md:grid-cols-5 gap-12 mb-12">
-            {/* Brand Column */}
-            <div className="md:col-span-2">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center text-white">
-                  <i className="fas fa-bolt"></i>
-                </div>
-                <span className="text-xl font-display font-black text-slate-900">Nexus<span className="text-purple-600">Analyst</span></span>
+          <div className="flex flex-col md:flex-row justify-between items-start mb-20">
+            <h3 className="text-4xl md:text-5xl font-accent italic text-slate-900 mb-12 md:mb-0">
+              Experience intelligence
+            </h3>
+            
+            <div className="flex gap-24 md:gap-48">
+              <div className="space-y-4">
+                <a href="#" className="block text-slate-900 hover:text-nexus-600 font-medium transition-colors">Download</a>
+                <a href="#" className="block text-slate-900 hover:text-nexus-600 font-medium transition-colors">Product</a>
+                <a href="#" className="block text-slate-900 hover:text-nexus-600 font-medium transition-colors">Docs</a>
+                <a href="#" className="block text-slate-900 hover:text-nexus-600 font-medium transition-colors">Changelog</a>
               </div>
-              <p className="text-slate-500 mb-6 leading-relaxed">Transform raw data into actionable insights with AI-powered analytics. Fast, accurate, and reliable.</p>
-              <div className="flex gap-3">
-                <a href="#" className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600">
-                  <i className="fab fa-twitter"></i>
-                </a>
-                <a href="#" className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600">
-                  <i className="fab fa-linkedin"></i>
-                </a>
-                <a href="#" className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600">
-                  <i className="fab fa-github"></i>
-                </a>
-                <a href="#" className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600">
-                  <i className="fab fa-youtube"></i>
-                </a>
+              <div className="space-y-4">
+                <a href="#" className="block text-slate-900 hover:text-nexus-600 font-medium transition-colors">Blog</a>
+                <a href="#" className="block text-slate-900 hover:text-nexus-600 font-medium transition-colors">Pricing</a>
+                <a href="#" className="block text-slate-900 hover:text-nexus-600 font-medium transition-colors">Use Cases</a>
               </div>
-            </div>
-
-            {/* Product Column */}
-            <div>
-              <h4 className="font-bold text-slate-900 mb-4">Product</h4>
-              <ul className="space-y-3">
-                <li><a href="#features" className="text-slate-500 hover:text-purple-600">Features</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-purple-600">Pricing</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-purple-600">API Docs</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-purple-600">Integrations</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-purple-600">Changelog</a></li>
-              </ul>
-            </div>
-
-            {/* Company Column */}
-            <div>
-              <h4 className="font-bold text-slate-900 mb-4">Company</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="text-slate-500 hover:text-purple-600">About Us</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-purple-600">Careers</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-purple-600">Blog</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-purple-600">Press Kit</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-purple-600">Contact</a></li>
-              </ul>
-            </div>
-
-            {/* Resources Column */}
-            <div>
-              <h4 className="font-bold text-slate-900 mb-4">Resources</h4>
-              <ul className="space-y-3">
-                <li><a href="#" className="text-slate-500 hover:text-purple-600">Documentation</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-purple-600">Help Center</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-purple-600">Community</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-purple-600">Status</a></li>
-                <li><a href="#" className="text-slate-500 hover:text-purple-600">Security</a></li>
-              </ul>
             </div>
           </div>
 
-          {/* Bottom Bar */}
-          <div className="pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-slate-400 text-sm">© {new Date().getFullYear()} NexusAnalyst AI. All rights reserved.</p>
-            <div className="flex gap-6 text-sm">
-              <a href="#" className="text-slate-400 hover:text-slate-600">Privacy Policy</a>
-              <a href="#" className="text-slate-400 hover:text-slate-600">Terms of Service</a>
-              <a href="#" className="text-slate-400 hover:text-slate-600">Cookie Policy</a>
+          <div className="relative mb-16 select-none pointer-events-none text-left">
+            <h2 className="text-[17vw] font-impact text-slate-900 leading-[0.8] tracking-tighter uppercase whitespace-nowrap opacity-90 -ml-2">
+              Nexus AI
+            </h2>
+          </div>
+
+          <div className="flex justify-start gap-6 mb-12">
+            {[
+              { icon: 'fab fa-twitter', label: 'Twitter' },
+              { icon: 'fab fa-linkedin', label: 'LinkedIn' },
+              { icon: 'fab fa-github', label: 'GitHub' },
+              { icon: 'fab fa-youtube', label: 'YouTube' }
+            ].map((social, idx) => (
+              <a 
+                key={idx} 
+                href="#" 
+                className="w-10 h-10 rounded-full bg-white border border-nexus-100 flex items-center justify-center text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all duration-300 shadow-sm"
+                aria-label={social.label}
+              >
+                <i className={social.icon + " text-sm"}></i>
+              </a>
+            ))}
+          </div>
+
+          <div className="pt-8 border-t border-nexus-100 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white text-xs">
+                <i className="fas fa-bolt"></i>
+              </div>
+              <span className="text-lg font-display font-black text-slate-900">Nexus<span className="text-nexus-600">Analyst</span></span>
+            </div>
+            
+            <div className="flex gap-8 text-sm font-medium text-slate-500">
+              <a href="#" className="hover:text-slate-900 transition-colors">About Nexus</a>
+              <a href="#" className="hover:text-slate-900 transition-colors">Privacy</a>
+              <a href="#" className="hover:text-slate-900 transition-colors">Terms</a>
             </div>
           </div>
         </div>

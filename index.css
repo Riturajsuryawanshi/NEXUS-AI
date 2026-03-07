@@ -25,7 +25,13 @@
   }
 
   ::selection {
-    @apply bg-nexus-500/20 text-nexus-900;
+    @apply bg-nexus-lavender text-nexus-900;
+  }
+
+  .elegant-ampersand {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 400;
   }
 }
 

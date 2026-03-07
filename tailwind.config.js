@@ -21,10 +21,15 @@ export default {
                     800: '#1524b5',
                     900: '#16228f',
                     950: '#0e1457',
+                    cream: '#FDF8F1',
+                    lavender: '#E6D8E7'
                 }
             },
             fontFamily: {
                 sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                impact: ['"Bebas Neue"', 'sans-serif'],
+                serif: ['"Playfair Display"', 'serif'],
+                accent: ['"Instrument Serif"', 'serif'],
             },
             animation: {
                 'fade-in': 'fadeIn 0.5s ease-out',
