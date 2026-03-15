@@ -129,7 +129,7 @@ export const TypewriterTestimonial: React.FC<ComponentProps> = ({ testimonials }
               >
                 <div className="h-28 overflow-hidden whitespace-pre-wrap font-sans leading-relaxed text-slate-600">
                   {typedText}
-                  <span className="inline-block w-[1px] h-[1em] bg-nexus-lavender ml-0.5 animate-pulse">|</span>
+                  <span className="inline-block w-[1px] h-[1em] bg-blue-300 ml-0.5 animate-pulse">|</span>
                 </div>
                 <div className="mt-4 pt-4 border-t border-slate-50">
                     <p className="text-right font-bold text-slate-900 uppercase tracking-tight">{testimonial.name}</p>

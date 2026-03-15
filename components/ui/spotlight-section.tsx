@@ -10,7 +10,7 @@ interface SpotlightSectionProps {
 
 export function SpotlightSection({ className }: SpotlightSectionProps) {
   return (
-    <section className={cn("relative py-32 bg-nexus-cream py-48 overflow-hidden", className)}>
+    <section className={cn("relative py-32 bg-slate-50 py-48 overflow-hidden", className)}>
       <div className="max-w-[95vw] mx-auto px-6">
         
         {/* Image Collage container */}
@@ -92,7 +92,7 @@ export function SpotlightSection({ className }: SpotlightSectionProps) {
             viewport={{ once: true }}
             className="pt-12"
           >
-            <button className="px-12 py-5 bg-slate-900 text-white rounded-full text-base font-bold tracking-widest uppercase hover:bg-nexus-lavender hover:text-slate-900 transition-all duration-500 transform hover:scale-105 active:scale-95 shadow-xl">
+            <button className="px-12 py-5 bg-slate-900 text-white rounded-full text-base font-bold tracking-widest uppercase hover:bg-blue-50 hover:text-slate-900 transition-all duration-500 transform hover:scale-105 active:scale-95 shadow-xl">
               Partner With Us
             </button>
           </motion.div>

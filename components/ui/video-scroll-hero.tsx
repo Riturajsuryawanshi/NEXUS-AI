@@ -5,13 +5,15 @@ import { motion, useScroll, useTransform, useSpring, useReducedMotion } from "fr
 
 interface VideoScrollHeroProps {
   videoSrc?: string;
+  imageSrc?: string;
   enableAnimations?: boolean;
   className?: string;
   startScale?: number;
 }
 
 export function VideoScrollHero({
-  videoSrc = "https://assets.mixkit.co/videos/preview/mixkit-abstract-glowing-digital-particles-background-27453-large.mp4",
+  videoSrc,
+  imageSrc,
   enableAnimations = true,
   className = "",
   startScale = 0.25,
@@ -47,7 +49,7 @@ export function VideoScrollHero({
       {/* Hero Section with Video */}
       <div
         ref={containerRef}
-        className="relative h-[250vh] bg-nexus-cream"
+        className={`relative h-[250vh] ${className}`}
       >
         {/* Fixed Video Container */}
         <div className="sticky top-0 w-full h-screen flex items-center justify-center z-10 overflow-hidden">
@@ -58,16 +60,24 @@ export function VideoScrollHero({
               transformOrigin: "center center",
             }}
           >
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="w-[90vw] max-w-7xl h-[70vh] object-cover shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] rounded-[2.5rem] border-8 border-white/10 backdrop-blur-3xl"
-            >
-              <source src={videoSrc} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
+            {imageSrc ? (
+              <img
+                src={imageSrc}
+                alt="Scroll Hero Media"
+                className="w-[90vw] max-w-7xl h-[70vh] object-cover shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] rounded-[2.5rem] border-8 border-white/10 backdrop-blur-3xl"
+              />
+            ) : (
+              <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-[90vw] max-w-7xl h-[70vh] object-cover shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] rounded-[2.5rem] border-8 border-white/10 backdrop-blur-3xl"
+              >
+                <source src={videoSrc || "https://assets.mixkit.co/videos/preview/mixkit-abstract-glowing-digital-particles-background-27453-large.mp4"} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            )}
 
             {/* Video Overlay Content */}
             <motion.div

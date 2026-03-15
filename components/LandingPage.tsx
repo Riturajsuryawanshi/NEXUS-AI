@@ -14,7 +14,7 @@ import { MagneticText } from './ui/morphing-cursor';
 const nexusTestimonials = [
   {
     src: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1888&auto=format&fit=crop',
-    quote: "Nexus AI has completely transformed our data pipeline. We can now generate deterministic reports at scale without any manual intervention.",
+    quote: "Nexus AI delivers fast, data-driven business insights that help freelancers and agencies identify opportunities and pitch smarter.",
     name: 'James Wilson',
     designation: 'Lead Data Scientist at QuantumLeap',
   },
@@ -46,21 +46,21 @@ const nexusTestimonials = [
 
 const howItWorks = [
   {
-    title: "Upload Data",
-    description: "Drag & drop your CSV or Excel files. We handle messy headers and formatting instantly.",
-    image: "https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?auto=format&fit=crop&q=80&w=1200",
+    title: "Paste Maps Link",
+    description: "By simply pasting a business’s Google Maps link, Nexus AI automatically generates a detailed business intelligence report—covering online presence, customer sentiment from reviews, growth opportunities, marketing gaps, and actionable recommendations.",
+    image: "/photo1.png", // Maps/Navigation related
     metric: "Step 01"
   },
   {
-    title: "AI Processing",
-    description: "Our dual-brain engine cleans data and detects patterns using deterministic logic.",
-    image: "https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&q=80&w=1200",
+    title: "Instant Pitch Deck",
+    description: "Instead of spending hours researching a potential client, users can produce a professional data-backed report in seconds and use it to pitch services like marketing, automation, SEO, reputation management, or analytics.",
+    image: "/photo2.png", // Dashboard/Analytics related
     metric: "Step 02"
   },
   {
-    title: "Get Insights",
-    description: "Receive a comprehensive report with charts, trends, and business recommendations.",
-    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=1200",
+    title: "Close More Clients",
+    description: "This makes Nexus AI a powerful prospecting and sales-enablement tool for freelancers and agencies who want to find high-quality leads, demonstrate expertise with real data, and close clients faster with insights that businesses actually care about.",
+    image: "/photo3.png", // Results related
     metric: "Step 03"
   }
 ];
@@ -96,8 +96,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
   return (
     <div className="min-h-screen bg-white text-slate-600 selection:bg-purple-500 selection:text-white font-sans">
 
-      {/* Navbar */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-5' : 'bg-transparent py-8'}`}>
+      {/* Navbar - Enhanced Glassmorphism */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? 'bg-white/80 backdrop-blur-xl border-b border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] py-4' : 'bg-transparent py-8'}`}>
         <div className="max-w-[1800px] mx-auto px-6 grid grid-cols-3 items-center">
           
           {/* Left: Menu Button */}
@@ -132,15 +132,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
             {profile ? (
               <button
                 onClick={onEnterApp}
-                className="px-6 py-2.5 bg-slate-900 text-white rounded-full text-xs font-black tracking-widest uppercase hover:bg-nexus-600 transition-all duration-300 shadow-xl shadow-slate-900/10"
+                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full text-xs font-black tracking-widest uppercase hover:shadow-[0_0_20px_rgba(37,66,255,0.4)] hover:-translate-y-0.5 transition-all duration-300 relative overflow-hidden group"
               >
-                Enter App
+                <span className="relative z-10">Enter App</span>
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
               </button>
             ) : (
-              <div className="flex items-center gap-3">
-                <button onClick={onLogin} className="hidden sm:block text-xs font-black tracking-widest uppercase text-slate-900 hover:text-nexus-600 transition-colors">Sign In</button>
-                <button onClick={onGetStarted} className="px-6 py-2.5 bg-slate-900 text-white rounded-full text-xs font-black tracking-widest uppercase hover:bg-nexus-600 transition-all duration-300 shadow-xl shadow-900/10">
-                  Get Started
+              <div className="flex items-center gap-4">
+                <button onClick={onLogin} className="hidden sm:block text-xs font-bold tracking-widest uppercase text-slate-600 hover:text-blue-600 transition-colors">Sign In</button>
+                <button onClick={onGetStarted} className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full text-xs font-black tracking-widest uppercase hover:shadow-[0_0_20px_rgba(37,66,255,0.4)] hover:-translate-y-0.5 transition-all duration-300 relative overflow-hidden group">
+                  <span className="relative z-10">Get Started</span>
+                  <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
                 </button>
               </div>
             )}
@@ -155,7 +157,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="fixed inset-0 z-[60] bg-nexus-cream p-6 overflow-y-auto"
+              className="fixed inset-0 z-[60] bg-white/70 backdrop-blur-3xl p-6 overflow-y-auto"
             >
               <div className="max-w-[1800px] mx-auto">
                 {/* Menu Header (Mirroring Navbar) */}
@@ -163,7 +165,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
                   <div className="flex justify-start">
                     <button
                       onClick={() => setMobileMenuOpen(false)}
-                      className="group flex items-center gap-3 px-8 py-3 rounded-full bg-slate-900 text-white hover:bg-nexus-600 transition-all duration-300 shadow-xl shadow-slate-900/10"
+                      className="group flex items-center gap-3 px-8 py-3 rounded-full bg-slate-900 border border-slate-700 text-white hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 transition-all duration-300 shadow-xl shadow-slate-900/10 hover:shadow-[0_0_20px_rgba(37,66,255,0.4)]"
                     >
                       <span className="text-[10px] font-black tracking-[0.2em] uppercase">Close</span>
                       <div className="flex flex-col gap-1 w-4">
@@ -175,7 +177,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
 
                   <div className="flex justify-center flex-col items-center gap-1 cursor-pointer" onClick={() => { setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-tr from-nexus-600 to-purple-600 rounded-lg flex items-center justify-center text-white font-black text-xl shadow-lg shadow-nexus-500/20">
+                      <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-500/20">
                         N
                       </div>
                       <span className="text-2xl font-display font-black text-slate-900 tracking-tighter">Nexus<span className="text-nexus-600">Analyst</span></span>
@@ -186,10 +188,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
                   {[
-                    { title: "WORK", desc: "Capabilities & Portfolio", img: "https://images.unsplash.com/photo-1639322537231-2f206e06af84?auto=format&fit=crop&q=80&w=800", link: "#how-it-works" },
-                    { title: "ENGINE", desc: "The Deterministic Logic", img: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&q=80&w=800", link: "#how-it-works" },
-                    { title: "PHILOSOPHY", desc: "Intelligence Policy", img: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=800", link: "#testimonials" },
-                    { title: "PARTNERSHIP", desc: "Start a Collaboration", img: "https://images.unsplash.com/photo-1557426272-fc759fbbad47?auto=format&fit=crop&q=80&w=800", link: "#" }
+                    { title: "FEATURES", desc: "Capabilities & Tools", img: "/photo1.png", link: "#how-it-works" },
+                    { title: "PRICING", desc: "Plans & Packages", img: "/photo2.png", link: "#pricing" },
+                    { title: "ABOUT", desc: "Our Mission & Story", img: "/photo3.png", link: "#about" }, 
+                    { title: "CONTACT", desc: "Get In Touch", img: "/photo5.png", link: "#contact" }
                   ].map((item, i) => (
                     <motion.div
                       key={i}
@@ -206,11 +208,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
                         <img 
                           src={item.img} 
                           alt={item.title} 
-                          className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700 ease-out"
+                          className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
                         />
                         <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-transparent transition-colors duration-500"></div>
                       </div>
-                      <h4 className="text-5xl font-impact text-slate-900 tracking-tighter uppercase mb-2 group-hover:text-nexus-600 transition-colors">
+                      <h4 className="text-5xl font-impact text-slate-900 tracking-tighter uppercase mb-2 group-hover:text-blue-600 transition-colors">
                         {item.title}
                       </h4>
                       <p className="text-xl font-accent italic text-slate-500 flex items-center gap-2">
@@ -224,7 +226,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
                 </div>
 
                 <div className="flex flex-wrap justify-center md:justify-end gap-x-12 gap-y-6 pt-12 border-t border-slate-200">
-                  <button onClick={() => scrollToSection('features')} className="text-xs font-black tracking-widest uppercase text-slate-400 hover:text-slate-900 transition-colors">Pricing</button>
+                  <button onClick={() => scrollToSection('pricing')} className="text-xs font-black tracking-widest uppercase text-slate-400 hover:text-slate-900 transition-colors">Pricing</button>
                   <button onClick={() => scrollToSection('how-it-works')} className="text-xs font-black tracking-widest uppercase text-slate-400 hover:text-slate-900 transition-colors">Platform</button>
                   <button onClick={() => scrollToSection('features')} className="text-xs font-black tracking-widest uppercase text-slate-400 hover:text-slate-900 transition-colors">Careers</button>
                   <button onClick={() => scrollToSection('testimonials')} className="text-xs font-black tracking-widest uppercase text-slate-400 hover:text-slate-900 transition-colors">Testimonials</button>
@@ -237,33 +239,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
         </AnimatePresence>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-24 md:pt-48 md:pb-32 bg-nexus-cream overflow-hidden">
+      {/* Hero Section - Elegant Gradient Background */}
+      <section className="relative pt-32 pb-24 md:pt-48 md:pb-32 bg-gradient-to-b from-slate-50 via-white to-blue-50/30 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 relative z-10 text-center flex flex-col items-center">
           
-          <h1 className="text-7xl md:text-[180px] font-impact text-slate-900 leading-[0.85] tracking-tight uppercase mb-8">
-            <span className="block mb-2 whitespace-nowrap">Transforming Data into</span>
-            <span className="inline-flex items-center gap-4">
+          <h1 className="text-7xl md:text-[180px] font-impact leading-[0.85] tracking-tight uppercase mb-8">
+            <span className="block mb-2 whitespace-nowrap bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-blue-950 to-slate-800">
+              Turn Business Data Into
+            </span>
+            <span className="inline-flex items-center gap-4 text-slate-900">
               <WordRotate 
-                words={["Insights", "Strategy", "Intelligence", "Growth"]} 
-                className="text-7xl md:text-[180px] font-impact"
+                words={["Client", "Growth", "Sales", "Pitch"]} 
+                className="text-7xl md:text-[180px] font-impact bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600"
               />
-              <span className="elegant-ampersand text-[0.8em] lowercase transform -translate-y-4">&amp;</span>
-              Action
+              <span className="elegant-ampersand text-[0.8em] lowercase transform -translate-y-4 text-blue-300">&amp;</span>
+              Opportunities
             </span>
           </h1>
 
-          <div className="max-w-3xl mx-auto text-3xl md:text-5xl font-accent italic text-slate-800 leading-tight mb-12 px-4">
-            At Nexus AI, we go beyond simple metrics. <br />
-            We form strategic intelligence across datasets to position your business for exponential growth.
+          <div className="max-w-3xl mx-auto text-2xl md:text-4xl font-accent italic text-slate-600 leading-tight mb-16 px-4">
+            Nexus AI is an AI-powered SaaS platform that helps freelancers, agencies, and consultants instantly analyze businesses and turn that insight into client acquisition opportunities.
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mt-8">
             <button
               onClick={profile && onEnterApp ? onEnterApp : onGetStarted}
-              className="px-12 py-5 bg-nexus-lavender text-slate-900 rounded-full text-sm font-bold tracking-widest uppercase hover:bg-slate-900 hover:text-white transition-all duration-300 hover:scale-105 active:scale-95 shadow-sm"
+              className="px-14 py-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full text-base font-bold tracking-[0.2em] uppercase shadow-[0_8px_30px_rgba(37,66,255,0.3)] hover:shadow-[0_8px_40px_rgba(37,66,255,0.5)] hover:-translate-y-1 transition-all duration-500 relative overflow-hidden group"
             >
-              Get Started
+              <span className="relative z-10 flex items-center gap-3">
+                Get Started <i className="fas fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
+              </span>
+              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out"></div>
             </button>
           </div>
 
@@ -284,10 +290,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
       />
     </section>
 
-    {/* Video Scroll Section */}
+
+
+    {/* Image Scroll Section */}
     <VideoScrollHero 
-      videoSrc="https://assets.mixkit.co/videos/preview/mixkit-abstract-glowing-digital-particles-background-27453-large.mp4"
-      className="bg-nexus-cream"
+      imageSrc="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=2000"
+      className="bg-slate-50"
     />
 
     {/* How It Works Sticky Scroll Section */}
@@ -295,7 +303,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
       id="how-it-works"
       content={howItWorks} 
       title={<>How it<br />works</>}
-      description="Go from raw data to actionable insights in three simple steps."
+      description="From an instant map link to a winning client proposal in seconds."
     />
 
     {/* Testimonials Section */}
@@ -303,13 +311,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
 
     {/* Scroll Reveal Typography Section */}
     <ScrollRevealText 
-      line1="Unparalleled Intelligence" 
-      line2="Redefining the Future of Data."
+      line1="AI-Powered Business Intelligence" 
+      line2="For Smarter Client Acquisition."
       className="bg-white"
     />
 
     {/* Animated Testimonials Section */}
-    <section className="py-12 bg-nexus-cream relative overflow-hidden">
+    <section id="about" className="py-12 bg-slate-50 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-16">
           <h2 className="text-sm font-bold tracking-[0.4em] uppercase text-nexus-600 mb-4 px-2">Voice of the Experts</h2>
@@ -320,7 +328,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
     </section>
 
       {/* Features Grid (Bento) */}
-      <section className="py-48 bg-nexus-cream relative overflow-hidden flex flex-col items-center text-center">
+      <section id="pricing" className="py-48 bg-slate-50 relative overflow-hidden flex flex-col items-center text-center">
         <div className="max-w-[95vw] mx-auto px-6 flex flex-col items-center">
           <div className="flex flex-col items-center justify-center mb-12">
              <h2 className="text-[clamp(3rem,8vw,12rem)] font-impact text-slate-900 leading-[0.85] tracking-tighter uppercase w-full max-w-7xl">
@@ -337,28 +345,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
 
           <div className="max-w-3xl space-y-8 mt-12">
             <p className="text-2xl md:text-3xl font-accent italic text-slate-600 leading-snug">
-              Your challenges are as unique as your data—so why settle for one-size-fits-all solutions? 
-              We customize our approach to ensure long-term, scalable success.
-            </p>
-            <p className="text-lg md:text-xl text-slate-400 font-accent italic">
-              Move beyond traditional analytics and embrace a partnership built for the future of intelligence.
+              This makes Nexus AI a powerful prospecting and sales-enablement tool for freelancers and agencies who want to find high-quality leads, demonstrate expertise with real data, and close clients faster with insights that businesses actually care about.
             </p>
           </div>
 
-          <div className="mt-24">
-            <button className="px-20 py-8 bg-slate-900 text-white rounded-full text-xl font-bold tracking-[0.2em] uppercase hover:bg-nexus-lavender hover:text-slate-900 transition-all duration-700 shadow-2xl hover:scale-105 active:scale-95">
-              Initiate Partnership
+          <div className="mt-24 relative inline-block">
+            <button className="px-20 py-8 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full text-xl font-bold tracking-[0.2em] uppercase shadow-[0_8px_30px_rgba(37,66,255,0.4)] hover:shadow-[0_8px_40px_rgba(37,66,255,0.6)] hover:-translate-y-2 transition-all duration-700 relative overflow-hidden group">
+              <span className="relative z-10">Initiate Partnership</span>
+              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-700 ease-out"></div>
             </button>
           </div>
         </div>
 
         {/* Decorative Background Accent */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[100vw] bg-nexus-lavender/5 rounded-full blur-[150px] pointer-events-none -z-10" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[100vw] bg-blue-50/5 rounded-full blur-[150px] pointer-events-none -z-10" />
       </section>
 
       {/* Footer */}
       {/* Antigravity Style Footer */}
-      <footer className="py-16 bg-nexus-cream border-t border-nexus-100 overflow-hidden">
+      <footer id="contact" className="py-16 bg-slate-50 border-t border-nexus-100 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-start mb-20">
             <h3 className="text-4xl md:text-5xl font-accent italic text-slate-900 mb-12 md:mb-0">
@@ -406,7 +411,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin,
 
           <div className="pt-8 border-t border-nexus-100 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white text-xs">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white text-xs shadow-lg">
                 <i className="fas fa-bolt"></i>
               </div>
               <span className="text-lg font-display font-black text-slate-900">Nexus<span className="text-nexus-600">Analyst</span></span>

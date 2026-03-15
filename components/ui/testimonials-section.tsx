@@ -40,7 +40,7 @@ export function TestimonialsSection() {
   const prev = () => setIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length);
 
   return (
-    <section className="relative bg-nexus-cream pb-12 overflow-hidden">
+    <section className="relative bg-slate-50 pb-12 overflow-hidden">
       {/* Refined Wavy Image Container */}
       <div className="relative w-[95vw] mx-auto h-[60vh] md:h-[75vh] overflow-hidden rounded-[4rem]">
         <AnimatePresence mode="wait">
@@ -66,7 +66,7 @@ export function TestimonialsSection() {
           <svg
             viewBox="0 0 1200 120"
             preserveAspectRatio="none"
-            className="relative block w-[calc(100%+1.3px)] h-[100px] md:h-[180px] fill-nexus-cream"
+            className="relative block w-[calc(100%+1.3px)] h-[100px] md:h-[180px] fill-slate-50"
           >
             <path d="M0,120h1200V0C1050,90,750,120,600,120S150,90,0,0V120Z" />
           </svg>
@@ -110,20 +110,21 @@ export function TestimonialsSection() {
           <div className="flex items-center gap-10">
             <button
               onClick={prev}
-              className="p-5 border border-slate-200 rounded-full hover:bg-slate-900 hover:text-white transition-all duration-500 transform hover:scale-110 active:scale-90"
+              className="p-5 border border-slate-200 rounded-full text-slate-400 hover:border-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-500 transform hover:scale-110 active:scale-90"
             >
               <ChevronLeft size={28} />
             </button>
             <button
               onClick={next}
-              className="p-5 border border-slate-200 rounded-full hover:bg-slate-900 hover:text-white transition-all duration-500 transform hover:scale-110 active:scale-90"
+              className="p-5 border border-slate-200 rounded-full text-slate-400 hover:border-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-500 transform hover:scale-110 active:scale-90"
             >
               <ChevronRight size={28} />
             </button>
           </div>
 
-          <button className="px-14 py-5 bg-[#D4E8E4] text-slate-700 rounded-full text-lg font-bold tracking-widest uppercase hover:bg-slate-900 hover:text-white transition-all duration-500 shadow-xl hover:shadow-nexus-lavender/30 transform hover:-translate-y-1 active:translate-y-0">
-            Read All Testimonials
+          <button className="px-14 py-5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full text-lg font-bold tracking-widest uppercase hover:shadow-[0_8px_30px_rgba(37,66,255,0.4)] transform hover:-translate-y-1 active:translate-y-0 transition-all duration-500 relative overflow-hidden group">
+            <span className="relative z-10">Read All Testimonials</span>
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out"></div>
           </button>
         </div>
       </div>

@@ -36,7 +36,7 @@ export function ScrollRevealText({ line1, line2, className }: ScrollRevealTextPr
   return (
     <section 
       ref={containerRef} 
-      className={cn("relative min-h-[40vh] flex flex-col justify-center items-center py-12 overflow-hidden bg-nexus-cream", className)}
+      className={cn("relative min-h-[40vh] flex flex-col justify-center items-center py-12 overflow-hidden bg-slate-50", className)}
     >
       <div className="w-full space-y-0 px-4">
         {/* Line 1: Slips in from Left */}
@@ -61,7 +61,7 @@ export function ScrollRevealText({ line1, line2, className }: ScrollRevealTextPr
       </div>
 
       {/* Subtle Background Accent */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-nexus-lavender/5 rounded-full blur-[120px] pointer-events-none -z-10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-blue-50/5 rounded-full blur-[120px] pointer-events-none -z-10" />
     </section>
   );
 }

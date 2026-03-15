@@ -29,7 +29,7 @@ export const StickyScroll = ({
   return (
     <div 
       ref={containerRef}
-      className={cn("relative w-full py-32 bg-nexus-cream", className)}
+      className={cn("relative w-full py-32 bg-slate-50", className)}
     >
       <div className="max-w-[95vw] mx-auto px-4 lg:flex lg:items-start lg:gap-12">
         
@@ -55,7 +55,7 @@ export const StickyScroll = ({
           {content.map((item, index) => (
             <div key={item.title + index} className="group cursor-pointer">
               {/* Image Container */}
-              <div className="relative aspect-[16/10] overflow-hidden rounded-[3rem] mb-12 bg-slate-200 shadow-2xl ring-1 ring-black/5 transform transition-all duration-500 group-hover:shadow-nexus-lavender/20">
+              <div className="relative aspect-[16/10] overflow-hidden rounded-[3rem] mb-12 bg-slate-200 shadow-2xl ring-1 ring-black/5 transform transition-all duration-500 group-hover:shadow-blue-50/20">
                 <img 
                   src={item.image} 
                   alt={item.title}
