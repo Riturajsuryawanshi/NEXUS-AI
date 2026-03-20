@@ -24,7 +24,7 @@ echo ✅ Payment gateway setup complete!
 echo.
 echo Next steps:
 echo 1. Configure webhook URL in Razorpay Dashboard:
-echo    https://nexus-ai.jiobase.com/functions/v1/webhook
+echo    https://kprssovriifzdzcufcmr.supabase.co/functions/v1/webhook
 echo 2. Test payment flow in your app
 echo.
 pause

@@ -10,8 +10,10 @@ interface AuthFlowProps {
 export const AuthFlow: React.FC<AuthFlowProps> = ({ onSuccess, initialMode }) => {
   const [mode, setMode] = useState(initialMode);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -40,14 +42,27 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onSuccess, initialMode }) =>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || isLoading) return;
+    if (!email || !password || isLoading) return;
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
+    setSuccessMsg(null);
+
     try {
-      if (mode === 'login') await UserService.login(email);
-      else await UserService.signup(email);
-      onSuccess();
+      if (mode === 'login') {
+        await UserService.loginWithPassword(email, password);
+        onSuccess();
+      } else {
+        await UserService.signup(email, password);
+        // Supabase may auto-login if email confirmation is disabled
+        // or show a "check your email" message if it's enabled.
+        setSuccessMsg('Account created! You can now sign in. If you see a confirmation email, please verify it first.');
+        setMode('login');
+      }
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
     } finally {
@@ -75,7 +90,7 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onSuccess, initialMode }) =>
           </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-800/80 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-2xl dark:shadow-none">
+        <div className="bg-white dark:bg-slate-800/80 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-2xl dark:shadow-none">
 
           <div className="mb-8">
             <div className="flex flex-col items-center gap-3">
@@ -106,12 +121,12 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onSuccess, initialMode }) =>
 
             <div className="flex items-center gap-4 mt-8">
               <div className="flex-1 h-px bg-slate-100 dark:bg-slate-700"></div>
-              <span className="text-[10px] font-bold text-slate-300 dark:text-slate-500 uppercase tracking-widest">Or Secure Email</span>
+              <span className="text-[10px] font-bold text-slate-300 dark:text-slate-500 uppercase tracking-widest">Or with Email</span>
               <div className="flex-1 h-px bg-slate-100 dark:bg-slate-700"></div>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 pl-1">Business Email</label>
               <input
@@ -124,9 +139,28 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onSuccess, initialMode }) =>
               />
             </div>
 
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 pl-1">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min. 6 characters"
+                className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all text-slate-900 dark:text-white font-medium placeholder:text-slate-300 dark:placeholder:text-slate-500"
+                required
+                minLength={6}
+              />
+            </div>
+
             {error && (
               <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 text-xs font-semibold">
                 {error}
+              </div>
+            )}
+
+            {successMsg && (
+              <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
+                {successMsg}
               </div>
             )}
 
@@ -141,7 +175,7 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onSuccess, initialMode }) =>
 
           <div className="mt-8 pt-8 border-t border-slate-50 dark:border-slate-700 text-center">
             <button
-              onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+              onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(null); setSuccessMsg(null); }}
               className="text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-all"
             >
               {mode === 'login' ? "Don't have an account? Sign up" : "Already have an account? Sign in"}

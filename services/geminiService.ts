@@ -130,10 +130,10 @@ export class GeminiService {
     });
   }
 
-  static async generateReviewInsights(preprocessedData: object): Promise<string> {
+  static async generateReviewInsights(preprocessedData: object, platformData?: any[]): Promise<string> {
     const systemInstruction = `You are a senior business analyst and local SEO consultant.
 
-Your job is to analyze a business using its Google Maps data including reviews, rating, photos, and business metadata.
+Your job is to analyze a business using its review data from one or more platforms (Google, Yelp, Trustpilot, etc.).
 
 Your analysis must be structured like a professional consulting report.
 
@@ -148,22 +148,34 @@ STRICT RULES:
 - Every insight must be data-backed and actionable.
 - Be specific, not generic. Reference actual review patterns.`;
 
+    // Build platform breakdown for the prompt
+    let platformSection = '';
+    if (platformData && platformData.length > 1) {
+      const platformBreakdown = platformData
+        .filter(p => p.reviews?.length > 0 || p.totalReviews > 0)
+        .map(p => `- ${p.platform.toUpperCase()}: ${p.rating}★ avg, ${p.totalReviews} total reviews, ${p.reviews?.length || 0} fetched`)
+        .join('\n');
+      platformSection = `
+
+MULTI-PLATFORM BREAKDOWN:
+${platformBreakdown}
+
+When analyzing, note differences between platforms. For example, if Google reviews are more positive than Yelp, mention this.`;
+    }
+
     const prompt = `Analyze this pre-processed business review data and produce a comprehensive business intelligence report.
 
 INPUT DATA:
 ${JSON.stringify(preprocessedData)}
+${platformSection}
 
 Perform the following analysis:
-1. Customer sentiment breakdown
-2. Top positive themes customers mention
-3. Top complaints and their frequency
-4. Reputation score based on reviews
-5. Competitor comparison (estimate based on industry norms if specific competitor data is absent)
-6. Google Maps visibility score
-7. Pricing perception analysis
-8. Operational weaknesses
-9. Customer experience strengths
 10. Revenue growth opportunities
+11. Strategic growth roadmap (Point-wise summary of growth vectors)
+12. Online presence audit (Listing status on Google, Yelp, Facebook, etc.)
+13. Strategic partnership recommendations
+14. Agency contribution specific to business growth
+${platformData && platformData.length > 1 ? '15. Cross-platform sentiment consistency analysis' : ''}
 
 OUTPUT: Return ONLY a valid JSON object matching this EXACT schema:
 
@@ -175,6 +187,7 @@ OUTPUT: Return ONLY a valid JSON object matching this EXACT schema:
     "local_visibility_score": number (0-100),
     "summary_text": "string (2-3 concise sentences)"
   },
+  "business_mission": "string (A professional mission statement based on the business's apparent values from reviews)",
   "sentiment_analysis": {
     "positive_percent": number,
     "neutral_percent": number,
@@ -215,12 +228,38 @@ OUTPUT: Return ONLY a valid JSON object matching this EXACT schema:
       "expected_impact": "string"
     }
   ],
+  "strategic_roadmap": [
+    {
+      "point": "string",
+      "benefit": "string"
+    }
+  ],
+  "online_presence_audit": [
+    {
+      "platform": "string",
+      "status": "active | missing | incomplete",
+      "action_required": "string"
+    }
+  ],
+  "recommended_partners": ["string"],
+  "agency_contribution": ["string (Specific agency services like 'Build Custom Mobile App', 'Social Media Management', 'Professional Website Redesign')"],
   "action_plan": [
     {
       "timeline_week": "string (e.g. 'Week 1')",
       "action": "string"
     }
-  ]
+  ]${platformData && platformData.length > 1 ? `,
+  "cross_platform_analysis": {
+    "platform_sentiment": [
+      {
+        "platform": "string (google/yelp/trustpilot/etc)",
+        "positivePercent": number,
+        "avgRating": number
+      }
+    ],
+    "consistency_score": number (0-100, how consistent sentiment is across platforms),
+    "summary": "string (1-2 sentences comparing platform differences)"
+  }` : ''}
 }
 
 IMPORTANT:
@@ -248,4 +287,38 @@ IMPORTANT:
       throw new Error('AI analysis temporarily unavailable.');
     }
   }
+}
+
+// ============================================
+// Standalone Stubs for Future Features
+// ============================================
+
+/** Placeholder: Edit an image using AI (not yet implemented) */
+export async function editImage(image: string, prompt: string): Promise<string> {
+  throw new Error('editImage is not yet implemented. This feature is coming soon.');
+}
+
+/** Placeholder: Create an AI instance (not yet implemented) */
+export function createAI(): any {
+  throw new Error('createAI is not yet implemented. This feature is coming soon.');
+}
+
+/** Placeholder: Animate an image using AI (not yet implemented) */
+export async function animateImage(image: string, prompt: string, ratio: string): Promise<string> {
+  throw new Error('animateImage is not yet implemented. This feature is coming soon.');
+}
+
+/** Placeholder: Generate an image using AI (not yet implemented) */
+export async function generateImage(prompt: string, size?: string, ratio?: string): Promise<string> {
+  throw new Error('generateImage is not yet implemented. This feature is coming soon.');
+}
+
+/** Placeholder: Perform data analysis using AI (not yet implemented) */
+export async function performDataAnalysis(csvData: string, prompt: string): Promise<any> {
+  throw new Error('performDataAnalysis is not yet implemented. This feature is coming soon.');
+}
+
+/** Placeholder: Search-grounded chat using AI (not yet implemented) */
+export async function searchGroundedChat(query: string): Promise<{ text: string; sources: any[] }> {
+  throw new Error('searchGroundedChat is not yet implemented. This feature is coming soon.');
 }

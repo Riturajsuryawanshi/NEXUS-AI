@@ -1,11 +1,11 @@
-import { ReviewAudit, ReviewPreprocessResult, ReviewAIInsight, RawReview } from '../types';
+import { ReviewAudit, ReviewPreprocessResult, ReviewAIInsight, RawReview, ReviewPlatform, PlatformReviewData, CompetitorProfile, CompetitorBenchmark, CompetitorRanking, BenchmarkDimension } from '../types';
 import { GeminiService } from './geminiService';
 import { supabase } from './supabaseClient';
 
 const REVIEW_CACHE_PREFIX = 'nexus_review_v3_';
 const AI_CACHE_PREFIX = 'nexus_review_ai_v3_';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const MAX_REVIEWS_FOR_AI = 20; // Limit for token usage, though API usually gives 5
+const MAX_REVIEWS_FOR_AI = 20;
 const MAX_REVIEW_TEXT_LENGTH = 500;
 
 // English stopwords for keyword extraction
@@ -27,7 +27,24 @@ const STOPWORDS = new Set([
   'ive', 'didnt', 'wasnt', 'wont', 'cant', 'couldnt', 'shouldnt', 'wouldnt',
 ]);
 
-export type ReviewPipelineStep = 'idle' | 'parsing' | 'fetching' | 'preprocessing' | 'ai_analysis' | 'complete' | 'error';
+export type ReviewPipelineStep =
+  | 'idle'
+  | 'parsing'
+  | 'fetching'
+  | 'fetching_platforms'
+  | 'fetching_competitors'
+  | 'preprocessing'
+  | 'ai_analysis'
+  | 'benchmarking'
+  | 'complete'
+  | 'error';
+
+export interface AuditOptions {
+  platforms?: ReviewPlatform[];
+  competitorUrls?: string[];
+  autoDetectCompetitors?: boolean;
+  maxCompetitors?: number;
+}
 
 export class ReviewService {
 
@@ -37,78 +54,143 @@ export class ReviewService {
 
   /**
    * Main entry point. Runs the full pipeline:
-   * 1. Parse/Proxies URL -> 2. Fetch Real Reviews (Edge Function) -> 3. Deterministic Preprocessing -> 4. AI Insights
+   * 1. Parse URL → 2. Fetch Reviews (multi-platform) → 3. Preprocess → 4. AI Insights
+   * 5. (Optional) Competitor Benchmarking
    */
   static async getAudit(
     placeUrl: string,
-    onStep?: (step: ReviewPipelineStep) => void
+    onStep?: (step: ReviewPipelineStep) => void,
+    options?: AuditOptions
   ): Promise<ReviewAudit> {
 
-    // STEP 1: Basic Client-Side Validation
+    const platforms = options?.platforms || ['google'];
+    const competitorUrls = options?.competitorUrls || [];
+    const autoDetect = options?.autoDetectCompetitors ?? false;
+    const maxCompetitors = options?.maxCompetitors ?? 5;
+
+    // STEP 1: Basic Validation
     onStep?.('parsing');
-    if (!placeUrl || !placeUrl.includes('google') || !placeUrl.includes('maps')) {
-      // Allow "search" terms too, but warn
-      if (placeUrl.length < 3) throw new Error("Please enter a valid Google Maps URL or business name.");
+    if (!placeUrl || placeUrl.length < 3) {
+      throw new Error("Please enter a valid business URL or name.");
     }
 
-    // We strive to use the URL as a cache key if possible, but the Place ID is better.
-    // For now, we'll try to extract a simple key, but true caching will happen AFTER fetching ID.
-    const tempCacheKey = placeUrl.replace(/[^a-zA-Z0-9]/g, '').substring(0, 50);
-
-    // STEP 2: Fetch Real Data via Edge Function
+    // STEP 2: Fetch Google reviews (primary — always fetched)
     onStep?.('fetching');
-    let placeData: any;
+    let googleResult: any;
     let reviews: RawReview[];
 
     try {
       const result = await this.fetchReviews(placeUrl);
       reviews = result.reviews;
-      placeData = {
-        name: result.meta.name,
-        types: [result.meta.industry.toLowerCase().replace(' ', '_')],
-        formatted_address: result.meta.location,
-        place_id: result.meta.place_id
-      };
+      googleResult = result;
     } catch (err: any) {
-      console.error('[ReviewService] Fetch failed:', err);
+      console.error('[ReviewService] Primary fetch failed:', err);
       throw new Error(err.message || "Unable to fetch business details. Please check the URL.");
     }
 
-    // Now we have the real Place ID, check cache for FULL result
-    const realPlaceId = placeData.place_id;
-    const cacheKey = REVIEW_CACHE_PREFIX + realPlaceId;
+    const realPlaceId = googleResult.meta.place_id;
+
+    // Check cache
+    const cacheKey = REVIEW_CACHE_PREFIX + realPlaceId + '_' + platforms.join(',');
     const cached = this.getFromCache<ReviewAudit>(cacheKey);
     if (cached) {
       onStep?.('complete');
       return cached;
     }
 
-    // STEP 3: Deterministic Preprocessing (NO AI)
+    // Build primary platform data
+    const allPlatformData: PlatformReviewData[] = [{
+      platform: 'google',
+      reviews: reviews,
+      rating: googleResult.meta.rating || 0,
+      totalReviews: googleResult.meta.totalReviews || reviews.length,
+      profileUrl: googleResult.meta.profileUrl,
+      fetchedAt: Date.now(),
+    }];
+
+    // STEP 2b: Fetch reviews from additional platforms (in parallel)
+    const extraPlatforms = platforms.filter(p => p !== 'google');
+    if (extraPlatforms.length > 0) {
+      onStep?.('fetching_platforms');
+      const platformResults = await Promise.allSettled(
+        extraPlatforms.map(platform =>
+          this.fetchPlatformReviews(platform, googleResult.meta.name)
+        )
+      );
+
+      for (let i = 0; i < platformResults.length; i++) {
+        const result = platformResults[i];
+        if (result.status === 'fulfilled') {
+          allPlatformData.push(result.value);
+          // Add platform reviews to the main reviews array
+          reviews = reviews.concat(result.value.reviews);
+        } else {
+          allPlatformData.push({
+            platform: extraPlatforms[i],
+            reviews: [],
+            rating: 0,
+            totalReviews: 0,
+            fetchedAt: Date.now(),
+            error: result.reason?.message || 'Fetch failed',
+          });
+        }
+      }
+    }
+
+    // STEP 3: Deterministic Preprocessing on ALL reviews
     onStep?.('preprocessing');
     const preprocessResult = this.preprocessReviews(reviews, {
-      name: placeData.name,
-      industry: (placeData.types || [])[0]?.replace('_', ' ') || 'Business',
-      location: placeData.formatted_address,
-      place_id: realPlaceId // Pass explicit ID
+      name: googleResult.meta.name,
+      industry: googleResult.meta.industry,
+      location: googleResult.meta.location,
+      place_id: realPlaceId,
+      platforms: platforms,
     });
 
-    // STEP 4: AI Insights (Gemini) — with 15s timeout for comprehensive analysis
+    // STEP 4: AI Insights
     onStep?.('ai_analysis');
     let aiInsights: ReviewAIInsight | null = null;
     try {
       if (preprocessResult.total_reviews > 0) {
-        const AI_TIMEOUT = 10000;
+        const AI_TIMEOUT = 15000; // Allow more time for multi-platform
         aiInsights = await Promise.race([
-          this.generateAIInsights(preprocessResult),
+          this.generateAIInsights(preprocessResult, allPlatformData),
           new Promise<null>((_, reject) => setTimeout(() => reject(new Error('AI timeout')), AI_TIMEOUT))
         ]);
       }
     } catch (err: any) {
-      console.warn('[ReviewService] AI skipped (timeout or error):', err.message);
+      console.warn('[ReviewService] AI skipped:', err.message);
+    }
+
+    // STEP 5: Competitor Benchmarking (optional)
+    let competitorBenchmark: CompetitorBenchmark | null = null;
+    if (competitorUrls.length > 0 || autoDetect) {
+      onStep?.('fetching_competitors');
+      try {
+        competitorBenchmark = await this.buildCompetitorBenchmark(
+          {
+            name: googleResult.meta.name,
+            place_id: realPlaceId,
+            rating: preprocessResult.average_rating,
+            total_reviews: preprocessResult.total_reviews,
+            types: googleResult.meta.types || [],
+            address: googleResult.meta.location,
+            location: googleResult.meta.geometry?.location,
+          },
+          competitorUrls,
+          autoDetect,
+          maxCompetitors,
+          googleResult.meta.geometry?.location,
+          googleResult.meta.types?.[0]
+        );
+        onStep?.('benchmarking');
+      } catch (err: any) {
+        console.warn('[ReviewService] Competitor benchmarking failed:', err.message);
+      }
     }
 
     // Build final ReviewAudit
-    const audit = this.buildAudit(preprocessResult, aiInsights);
+    const audit = this.buildAudit(preprocessResult, aiInsights, allPlatformData, competitorBenchmark);
 
     // Cache result
     this.setCache(cacheKey, audit);
@@ -118,12 +200,12 @@ export class ReviewService {
   }
 
   // ====================================================
-  // STEP 2: FETCH REVIEWS (via Proxy)
+  // STEP 2: FETCH REVIEWS (Google — via places-proxy)
   // ====================================================
 
   private static async fetchReviews(
     url: string
-  ): Promise<{ reviews: RawReview[]; meta: { name: string; industry: string; location: string; place_id: string } }> {
+  ): Promise<{ reviews: RawReview[]; meta: any }> {
 
     const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
     const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -153,6 +235,7 @@ export class ReviewService {
       text: r.text || '',
       timestamp: r.time ? new Date(r.time * 1000).toISOString() : new Date().toISOString(),
       author: r.author_name || 'Google User',
+      platform: 'google' as ReviewPlatform,
     }));
 
     const meta = {
@@ -161,13 +244,17 @@ export class ReviewService {
         ? data.types[0].replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
         : 'Business',
       location: data.formatted_address || 'Unknown Location',
-      place_id: data.place_id
+      place_id: data.place_id,
+      types: data.types || [],
+      geometry: data.geometry,
+      rating: data.rating || 0,
+      totalReviews: data.user_ratings_total || 0,
+      profileUrl: data.url,
     };
 
-    // FALLBACK: If API Key is missing or Google billing not enabled,
-    // the proxy returns "Mock Coffee Roasters". Use instant local demo reviews.
+    // FALLBACK: If API Key is missing (mock data detected)
     if (meta.name === "Mock Coffee Roasters" || meta.place_id === "mock_place_id_123") {
-      console.warn("[ReviewService] Mock data detected. Using instant local demo reviews.");
+      console.warn("[ReviewService] Mock data detected. Using local demo reviews.");
       return this.getLocalDemoReviews(url);
     }
 
@@ -175,11 +262,232 @@ export class ReviewService {
   }
 
   // ====================================================
-  // STEP 2b: LOCAL DEMO REVIEWS (No API Required)
+  // STEP 2b: FETCH PLATFORM REVIEWS (via reviews-proxy)
   // ====================================================
 
-  private static getLocalDemoReviews(url: string): { reviews: RawReview[]; meta: { name: string; industry: string; location: string; place_id: string } } {
-    // Extract a business name from the URL if possible
+  private static async fetchPlatformReviews(
+    platform: ReviewPlatform,
+    businessName: string
+  ): Promise<PlatformReviewData> {
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+    const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return {
+        platform, reviews: [], rating: 0, totalReviews: 0,
+        fetchedAt: Date.now(), error: 'Missing Supabase config'
+      };
+    }
+
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/reviews-proxy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          action: 'fetch_reviews',
+          platform,
+          query: businessName,
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        return {
+          platform, reviews: [], rating: 0, totalReviews: 0,
+          fetchedAt: Date.now(), error: errData.error || `HTTP ${response.status}`
+        };
+      }
+
+      const data = await response.json();
+
+      return {
+        platform,
+        reviews: (data.reviews || []).map((r: any) => ({
+          ...r,
+          platform,
+        })),
+        rating: data.rating || 0,
+        totalReviews: data.totalReviews || 0,
+        profileUrl: data.profileUrl,
+        fetchedAt: Date.now(),
+        error: data.error,
+      };
+    } catch (err: any) {
+      return {
+        platform, reviews: [], rating: 0, totalReviews: 0,
+        fetchedAt: Date.now(), error: err.message
+      };
+    }
+  }
+
+  // ====================================================
+  // COMPETITOR BENCHMARKING
+  // ====================================================
+
+  private static async buildCompetitorBenchmark(
+    subject: CompetitorProfile,
+    competitorUrls: string[],
+    autoDetect: boolean,
+    maxCompetitors: number,
+    subjectLocation?: { lat: number; lng: number },
+    subjectType?: string
+  ): Promise<CompetitorBenchmark> {
+
+    let competitorProfiles: CompetitorProfile[] = [];
+
+    // 1. Auto-detect competitors via Nearby Search
+    if (autoDetect && subjectLocation) {
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/reviews-proxy`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            action: 'find_competitors',
+            location: `${subjectLocation.lat},${subjectLocation.lng}`,
+            category: subjectType,
+            placeId: subject.place_id,
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          competitorProfiles = (data.competitors || []).slice(0, maxCompetitors);
+        }
+      } catch (err) {
+        console.warn('[ReviewService] Auto-detect competitors failed:', err);
+      }
+    }
+
+    // 2. Fetch competitors from manually provided URLs
+    if (competitorUrls.length > 0) {
+      const manualResults = await Promise.allSettled(
+        competitorUrls.slice(0, maxCompetitors).map(async (url) => {
+          const result = await this.fetchReviews(url);
+          return {
+            name: result.meta.name,
+            place_id: result.meta.place_id,
+            rating: result.meta.rating || result.reviews.reduce((s: number, r: RawReview) => s + r.rating, 0) / (result.reviews.length || 1),
+            total_reviews: result.meta.totalReviews || result.reviews.length,
+            types: result.meta.types || [],
+            address: result.meta.location,
+            location: result.meta.geometry?.location,
+          } as CompetitorProfile;
+        })
+      );
+
+      for (const r of manualResults) {
+        if (r.status === 'fulfilled') {
+          competitorProfiles.push(r.value);
+        }
+      }
+    }
+
+    // Deduplicate by place_id
+    const seen = new Set<string>([subject.place_id]);
+    competitorProfiles = competitorProfiles.filter(c => {
+      if (seen.has(c.place_id)) return false;
+      seen.add(c.place_id);
+      return true;
+    });
+
+    // 3. Build rankings
+    const allBusinesses = [subject, ...competitorProfiles];
+
+    const ratingRanking: CompetitorRanking = {
+      metric: 'Rating',
+      rankings: allBusinesses
+        .map(b => ({ name: b.name, value: b.rating, rank: 0, isSubject: b.place_id === subject.place_id }))
+        .sort((a, b) => (b.value as number) - (a.value as number))
+        .map((r, i) => ({ ...r, rank: i + 1 })),
+    };
+
+    const reviewCountRanking: CompetitorRanking = {
+      metric: 'Review Count',
+      rankings: allBusinesses
+        .map(b => ({ name: b.name, value: b.total_reviews, rank: 0, isSubject: b.place_id === subject.place_id }))
+        .sort((a, b) => (b.value as number) - (a.value as number))
+        .map((r, i) => ({ ...r, rank: i + 1 })),
+    };
+
+    // 4. Build benchmark dimensions (Rating + Review Volume + estimated dimensions)
+    const dimensions: BenchmarkDimension[] = [
+      {
+        name: 'Rating',
+        subjectScore: Math.round((subject.rating / 5) * 10),
+        scores: competitorProfiles.map(c => ({
+          name: c.name,
+          score: Math.round((c.rating / 5) * 10),
+        })),
+      },
+      {
+        name: 'Review Volume',
+        subjectScore: this.normalizeReviewCount(subject.total_reviews, allBusinesses.map(b => b.total_reviews)),
+        scores: competitorProfiles.map(c => ({
+          name: c.name,
+          score: this.normalizeReviewCount(c.total_reviews, allBusinesses.map(b => b.total_reviews)),
+        })),
+      },
+      {
+        name: 'Reputation',
+        subjectScore: Math.round(subject.rating * 2),
+        scores: competitorProfiles.map(c => ({
+          name: c.name,
+          score: Math.round(c.rating * 2),
+        })),
+      },
+      {
+        name: 'Engagement',
+        subjectScore: this.estimateEngagement(subject),
+        scores: competitorProfiles.map(c => ({
+          name: c.name,
+          score: this.estimateEngagement(c),
+        })),
+      },
+      {
+        name: 'Visibility',
+        subjectScore: Math.min(10, Math.round(Math.log10(Math.max(1, subject.total_reviews)) * 3)),
+        scores: competitorProfiles.map(c => ({
+          name: c.name,
+          score: Math.min(10, Math.round(Math.log10(Math.max(1, c.total_reviews)) * 3)),
+        })),
+      },
+    ];
+
+    return {
+      subject,
+      competitors: competitorProfiles,
+      dimensions,
+      rankings: [ratingRanking, reviewCountRanking],
+      generatedAt: Date.now(),
+    };
+  }
+
+  private static normalizeReviewCount(count: number, all: number[]): number {
+    const max = Math.max(...all, 1);
+    return Math.round((count / max) * 10);
+  }
+
+  private static estimateEngagement(profile: CompetitorProfile): number {
+    // Heuristic: Higher rating + more reviews = higher engagement
+    const ratingFactor = profile.rating / 5;
+    const volumeFactor = Math.min(1, profile.total_reviews / 200);
+    return Math.round((ratingFactor * 0.6 + volumeFactor * 0.4) * 10);
+  }
+
+  // ====================================================
+  // LOCAL DEMO REVIEWS (No API Required)
+  // ====================================================
+
+  private static getLocalDemoReviews(url: string): { reviews: RawReview[]; meta: any } {
     let businessName = "Urban Bistro";
     try {
       const decoded = decodeURIComponent(url);
@@ -193,31 +501,31 @@ export class ReviewService {
     const now = Date.now();
     const DAY = 86400000;
     const reviews: RawReview[] = [
-      { rating: 5, text: "Absolutely wonderful experience! The attention to detail here is remarkable. The staff went above and beyond to make us feel welcome. The ambiance was perfect for our anniversary dinner. Will definitely be coming back.", timestamp: new Date(now - 2 * DAY).toISOString(), author: "Sarah Mitchell" },
-      { rating: 4, text: "Really good overall. The service was prompt and the quality exceeded my expectations. Only reason I'm not giving 5 stars is the wait time on weekends can be a bit long. But totally worth it once you're seated.", timestamp: new Date(now - 5 * DAY).toISOString(), author: "James Rodriguez" },
-      { rating: 5, text: "Best in the city, hands down! I've been a regular for over a year now and the consistency is impressive. Every visit feels special. The team clearly takes pride in what they do.", timestamp: new Date(now - 7 * DAY).toISOString(), author: "Priya Sharma" },
-      { rating: 2, text: "Disappointed with my last visit. Had to wait 40 minutes despite having a reservation. When we finally got served, the order was wrong. Staff seemed overwhelmed and stressed. This used to be my favorite spot but standards have slipped.", timestamp: new Date(now - 10 * DAY).toISOString(), author: "Michael Chen" },
-      { rating: 5, text: "A hidden gem! The quality here rivals places charging twice the price. Everything was fresh and beautifully presented. My colleagues and I are already planning our next visit.", timestamp: new Date(now - 14 * DAY).toISOString(), author: "Amanda Foster" },
-      { rating: 3, text: "It's decent but nothing special. The pricing feels a bit steep for what you get. Service was okay — not rude, but not particularly attentive either. I might give it another chance but wouldn't go out of my way.", timestamp: new Date(now - 18 * DAY).toISOString(), author: "Robert Kim" },
-      { rating: 1, text: "Terrible experience. The manager was rude when I raised a concern about billing. Charged us for items we never received. The hygiene standards were also questionable. Would not recommend to anyone.", timestamp: new Date(now - 21 * DAY).toISOString(), author: "Lisa Thompson" },
-      { rating: 4, text: "Very professional and efficient. The new renovations look great and the expanded menu has some excellent additions. Parking is still an issue though — they need to sort that out.", timestamp: new Date(now - 25 * DAY).toISOString(), author: "David Washington" },
-      { rating: 5, text: "Outstanding! Brought my family here for a celebration and everyone loved it. The kids' options were surprisingly good. The staff even brought out a complimentary dessert when they heard it was my daughter's birthday.", timestamp: new Date(now - 30 * DAY).toISOString(), author: "Kavitha Nair" },
-      { rating: 4, text: "Good quality and reasonable prices. The location is convenient and there's usually availability even during peak hours. Only downside is the noise level — it can get quite loud inside.", timestamp: new Date(now - 35 * DAY).toISOString(), author: "Thomas Wright" },
-      { rating: 2, text: "Used to be much better. The last two visits were disappointing — inconsistent quality and the portions seem to have gotten smaller. For the price they're charging now, I expected better.", timestamp: new Date(now - 42 * DAY).toISOString(), author: "Jennifer Lee" },
-      { rating: 5, text: "Perfection! Every detail was thoughtfully handled. I've recommended this place to all my friends and they've all had equally great experiences. This is what excellence looks like.", timestamp: new Date(now - 48 * DAY).toISOString(), author: "Alex Patel" },
-      { rating: 4, text: "Solid 4 stars. Great product quality, friendly staff, clean premises. The online booking system could use some improvement though — had trouble with it twice now.", timestamp: new Date(now - 55 * DAY).toISOString(), author: "Rachel Green" },
-      { rating: 3, text: "Average experience. Nothing wrong per se, but nothing memorable either. The staff seemed disinterested and the whole thing felt very transactional. For a premium establishment, I expected more warmth.", timestamp: new Date(now - 60 * DAY).toISOString(), author: "Kevin Okoye" },
-      { rating: 5, text: "Can't say enough good things! The personalized attention, the quality, the atmosphere — everything was on point. This has become my go-to recommendation for visitors to the city.", timestamp: new Date(now - 75 * DAY).toISOString(), author: "Sophia Wang" },
-      { rating: 1, text: "Never again. Found a foreign object during my visit. When I complained, the staff tried to brush it off. No accountability whatsoever. I've reported this to the health department.", timestamp: new Date(now - 85 * DAY).toISOString(), author: "Mark Johnson" },
-      { rating: 4, text: "Very impressed with the recent changes. The new layout is much more comfortable and the updated offerings are excellent. Staff training has clearly improved too. Keep it up!", timestamp: new Date(now - 90 * DAY).toISOString(), author: "Diana Cruz" },
-      { rating: 5, text: "World class! Traveled 50km just to visit based on a friend's recommendation and it did not disappoint. The experience was worth every penny. Truly a benchmark for the industry.", timestamp: new Date(now - 100 * DAY).toISOString(), author: "Rahul Mehta" },
-      { rating: 3, text: "Hit or miss. Some visits are great, others are mediocre. There's an inconsistency problem here that management needs to address. When it's good, it's really good — but you shouldn't have to gamble on quality.", timestamp: new Date(now - 120 * DAY).toISOString(), author: "Emily Brown" },
-      { rating: 4, text: "Pleasantly surprised! Came with low expectations based on the exterior but was blown away by the quality inside. The value for money is excellent compared to competitors in the area.", timestamp: new Date(now - 150 * DAY).toISOString(), author: "Chris Anderson" },
-      { rating: 5, text: "My absolute favorite spot! Been coming here weekly for 6 months and it gets better every time. They actually listen to feedback too — I suggested something last month and they implemented it!", timestamp: new Date(now - 180 * DAY).toISOString(), author: "Nina Kowalski" },
-      { rating: 2, text: "Overrated and overpriced. Don't believe the hype. The experience was mediocre at best. There are much better options within a 5-minute walk. Save your money and go elsewhere.", timestamp: new Date(now - 200 * DAY).toISOString(), author: "Sam Davis" },
-      { rating: 4, text: "Consistently good quality. Nothing flashy, just solid and reliable every time. The loyalty program is a nice touch too. Would rate 5 stars if the hours were more flexible.", timestamp: new Date(now - 240 * DAY).toISOString(), author: "Anita Desai" },
-      { rating: 5, text: "Simply the best in the area. I've tried every competitor and none come close. The secret is clearly their team — passionate, skilled, and genuinely caring. A five-star experience from start to finish.", timestamp: new Date(now - 300 * DAY).toISOString(), author: "Oliver Zhang" },
-      { rating: 3, text: "It's fine. Nothing exciting but nothing bad. Decent quality, fair prices, okay service. If you're in the area and need something quick, it'll do. But I wouldn't specifically recommend it.", timestamp: new Date(now - 350 * DAY).toISOString(), author: "Grace Williams" },
+      { rating: 5, text: "Absolutely wonderful experience! The attention to detail here is remarkable. The staff went above and beyond to make us feel welcome.", timestamp: new Date(now - 2 * DAY).toISOString(), author: "Sarah Mitchell", platform: 'google' },
+      { rating: 4, text: "Really good overall. The service was prompt and the quality exceeded my expectations. Only reason not 5 stars is the wait time on weekends.", timestamp: new Date(now - 5 * DAY).toISOString(), author: "James Rodriguez", platform: 'google' },
+      { rating: 5, text: "Best in the city, hands down! I've been a regular for over a year now and the consistency is impressive.", timestamp: new Date(now - 7 * DAY).toISOString(), author: "Priya Sharma", platform: 'google' },
+      { rating: 2, text: "Disappointed with my last visit. Had to wait 40 minutes despite having a reservation. When we finally got served, the order was wrong.", timestamp: new Date(now - 10 * DAY).toISOString(), author: "Michael Chen", platform: 'google' },
+      { rating: 5, text: "A hidden gem! The quality here rivals places charging twice the price. Everything was fresh and beautifully presented.", timestamp: new Date(now - 14 * DAY).toISOString(), author: "Amanda Foster", platform: 'google' },
+      { rating: 3, text: "It's decent but nothing special. The pricing feels a bit steep for what you get. Service was okay.", timestamp: new Date(now - 18 * DAY).toISOString(), author: "Robert Kim", platform: 'google' },
+      { rating: 1, text: "Terrible experience. The manager was rude when I raised a concern about billing. Charged us for items we never received.", timestamp: new Date(now - 21 * DAY).toISOString(), author: "Lisa Thompson", platform: 'google' },
+      { rating: 4, text: "Very professional and efficient. The new renovations look great and the expanded menu has some excellent additions.", timestamp: new Date(now - 25 * DAY).toISOString(), author: "David Washington", platform: 'google' },
+      { rating: 5, text: "Outstanding! Brought my family here for a celebration and everyone loved it. The staff even brought out a complimentary dessert.", timestamp: new Date(now - 30 * DAY).toISOString(), author: "Kavitha Nair", platform: 'google' },
+      { rating: 4, text: "Good quality and reasonable prices. The location is convenient and there's usually availability even during peak hours.", timestamp: new Date(now - 35 * DAY).toISOString(), author: "Thomas Wright", platform: 'google' },
+      { rating: 2, text: "Used to be much better. The last two visits were disappointing — inconsistent quality and smaller portions.", timestamp: new Date(now - 42 * DAY).toISOString(), author: "Jennifer Lee", platform: 'google' },
+      { rating: 5, text: "Perfection! Every detail was thoughtfully handled. I've recommended this place to all my friends.", timestamp: new Date(now - 48 * DAY).toISOString(), author: "Alex Patel", platform: 'google' },
+      { rating: 4, text: "Solid 4 stars. Great product quality, friendly staff, clean premises. The online booking system could use some improvement.", timestamp: new Date(now - 55 * DAY).toISOString(), author: "Rachel Green", platform: 'google' },
+      { rating: 3, text: "Average experience. Nothing wrong per se, but nothing memorable either. The staff seemed disinterested.", timestamp: new Date(now - 60 * DAY).toISOString(), author: "Kevin Okoye", platform: 'google' },
+      { rating: 5, text: "Can't say enough good things! The personalized attention, the quality, the atmosphere — everything was on point.", timestamp: new Date(now - 75 * DAY).toISOString(), author: "Sophia Wang", platform: 'google' },
+      { rating: 1, text: "Never again. Found a foreign object during my visit. When I complained, the staff tried to brush it off.", timestamp: new Date(now - 85 * DAY).toISOString(), author: "Mark Johnson", platform: 'google' },
+      { rating: 4, text: "Very impressed with the recent changes. The new layout is much more comfortable and the updated offerings are excellent.", timestamp: new Date(now - 90 * DAY).toISOString(), author: "Diana Cruz", platform: 'google' },
+      { rating: 5, text: "World class! Traveled 50km just to visit based on a friend's recommendation and it did not disappoint.", timestamp: new Date(now - 100 * DAY).toISOString(), author: "Rahul Mehta", platform: 'google' },
+      { rating: 3, text: "Hit or miss. Some visits are great, others are mediocre. There's an inconsistency problem here.", timestamp: new Date(now - 120 * DAY).toISOString(), author: "Emily Brown", platform: 'google' },
+      { rating: 4, text: "Pleasantly surprised! Came with low expectations but was blown away by the quality inside.", timestamp: new Date(now - 150 * DAY).toISOString(), author: "Chris Anderson", platform: 'google' },
+      { rating: 5, text: "My absolute favorite spot! Been coming here weekly for 6 months and it gets better every time.", timestamp: new Date(now - 180 * DAY).toISOString(), author: "Nina Kowalski", platform: 'google' },
+      { rating: 2, text: "Overrated and overpriced. Don't believe the hype. The experience was mediocre at best.", timestamp: new Date(now - 200 * DAY).toISOString(), author: "Sam Davis", platform: 'google' },
+      { rating: 4, text: "Consistently good quality. Nothing flashy, just solid and reliable every time. The loyalty program is a nice touch.", timestamp: new Date(now - 240 * DAY).toISOString(), author: "Anita Desai", platform: 'google' },
+      { rating: 5, text: "Simply the best in the area. I've tried every competitor and none come close.", timestamp: new Date(now - 300 * DAY).toISOString(), author: "Oliver Zhang", platform: 'google' },
+      { rating: 3, text: "It's fine. Nothing exciting but nothing bad. Decent quality, fair prices, okay service.", timestamp: new Date(now - 350 * DAY).toISOString(), author: "Grace Williams", platform: 'google' },
     ];
 
     return {
@@ -226,74 +534,12 @@ export class ReviewService {
         name: businessName,
         industry: "Business",
         location: "Local Area",
-        place_id: `demo_${Date.now()}`
+        place_id: `demo_${Date.now()}`,
+        types: ['business'],
+        rating: 3.8,
+        totalReviews: reviews.length,
       }
     };
-  }
-
-  // ====================================================
-  // STEP 2c: AI SIMULATION (Requires Gemini)
-  // ====================================================
-
-  private static async generateSimulatedReviews(url: string): Promise<{ reviews: RawReview[]; meta: { name: string; industry: string; location: string; place_id: string } }> {
-    console.log("[ReviewService] Generating simulated reviews for:", url);
-
-    // 1. Identify business from URL
-    const businessPrompt = `Analyze this Google Maps URL: "${url}".
-    Identify the likely Business Name, Industry (e.g. Restaurant, Gym), and Location (City/Area).
-    If the URL is generic or you can't tell, make a best guess based on the text.
-    Return JSON: { "name": "...", "industry": "...", "location": "..." }`;
-
-    let businessInfo = { name: "Business", industry: "Service", location: "Unknown" };
-    try {
-      const raw = await GeminiService.generateContent(businessPrompt);
-      const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
-      businessInfo = { ...businessInfo, ...parsed };
-    } catch (e) {
-      console.warn("Failed to identify business from URL, using defaults.");
-    }
-
-    // 2. Generate Realistic Reviews
-    const reviewPrompt = `Generate 25 realistic Google Maps reviews for "${businessInfo.name}" (${businessInfo.industry}) in ${businessInfo.location}.
-
-    CRITICAL INSTRUCTIONS:
-    - VARY THE DATES: Distributions from "2 days ago" to "1 year ago".
-    - VARY THE RATINGS: Mix of 5, 4, 3, 2, 1 stars. Approx 3.8 to 4.5 average.
-    - BE SPECIFIC: Mention specific menu items, staff names, or service details relevant to a ${businessInfo.industry}.
-    - MIXED SENTIMENT: Even positive reviews should sometimes have small complaints. Negative reviews should be detailed.
-    - Return ONLY a JSON array: [{ "rating": number, "text": "...", "time_desc": "2 weeks ago", "author_name": "..." }]`;
-
-    const rawReviews = await GeminiService.generateContent(reviewPrompt);
-    const parsedReviews = JSON.parse(rawReviews.replace(/```json|```/g, '').trim());
-
-    if (!Array.isArray(parsedReviews)) throw new Error("AI returned invalid review format");
-
-    const reviews: RawReview[] = parsedReviews.map((r: any) => ({
-      rating: Number(r.rating) || 3,
-      text: r.text || "",
-      // Convert relative time to approximate ISO date for existing logic
-      timestamp: this.parseRelativeTime(r.time_desc),
-      author: r.author_name || "Google User"
-    }));
-
-    return {
-      reviews,
-      meta: {
-        ...businessInfo,
-        place_id: `simulated_${Date.now()}`
-      }
-    };
-  }
-
-  private static parseRelativeTime(desc: string): string {
-    const now = new Date();
-    if (!desc) return now.toISOString();
-    const lower = desc.toLowerCase();
-    if (lower.includes('year')) now.setFullYear(now.getFullYear() - 1);
-    else if (lower.includes('month')) now.setMonth(now.getMonth() - (parseInt(desc) || 1));
-    else if (lower.includes('week')) now.setDate(now.getDate() - (parseInt(desc) || 1) * 7);
-    else if (lower.includes('day')) now.setDate(now.getDate() - (parseInt(desc) || 1));
-    return now.toISOString();
   }
 
   // ====================================================
@@ -302,7 +548,7 @@ export class ReviewService {
 
   private static preprocessReviews(
     reviews: RawReview[],
-    meta: { name: string; industry: string; location: string; place_id: string }
+    meta: { name: string; industry: string; location: string; place_id: string; platforms?: ReviewPlatform[] }
   ): ReviewPreprocessResult {
 
     const total = reviews.length;
@@ -395,6 +641,7 @@ export class ReviewService {
         negative_reviews_summary: negReviews,
         positive_reviews_summary: posReviews,
       },
+      platforms_analyzed: meta.platforms,
     };
   }
 
@@ -402,13 +649,16 @@ export class ReviewService {
   // STEP 4: AI INSIGHTS
   // ====================================================
 
-  private static async generateAIInsights(preprocess: ReviewPreprocessResult): Promise<ReviewAIInsight> {
+  private static async generateAIInsights(
+    preprocess: ReviewPreprocessResult,
+    platformData?: PlatformReviewData[]
+  ): Promise<ReviewAIInsight> {
     const aiCacheKey = AI_CACHE_PREFIX + preprocess.business_name.toLowerCase().replace(/[^a-z0-9]/g, '_');
     const cached = this.getFromCache<ReviewAIInsight>(aiCacheKey);
     if (cached) return cached;
 
-    // Call Gemini Service
-    const aiResponse = await GeminiService.generateReviewInsights(preprocess);
+    // Call Gemini Service — pass platform data for cross-platform analysis
+    const aiResponse = await GeminiService.generateReviewInsights(preprocess, platformData);
 
     // Parse Response
     let jsonStr = aiResponse.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -423,12 +673,11 @@ export class ReviewService {
       throw new Error('AI response was not valid JSON');
     }
 
-    // Basic Validation
     if (!parsed.executive_summary) {
       throw new Error('AI response missing required fields');
     }
 
-    // Ensure all 8 sections have safe defaults
+    // Safe defaults
     if (!parsed.executive_summary) parsed.executive_summary = { rating: 0, total_reviews: 0, sentiment_score: 0, local_visibility_score: 0, summary_text: 'Pending analysis' };
     if (!parsed.sentiment_analysis) parsed.sentiment_analysis = { positive_percent: 0, neutral_percent: 0, negative_percent: 0, trend_summary: 'Pending analysis' };
     if (!parsed.top_positive_themes) parsed.top_positive_themes = [];
@@ -448,13 +697,13 @@ export class ReviewService {
 
   private static buildAudit(
     preprocess: ReviewPreprocessResult,
-    aiInsights: ReviewAIInsight | null
+    aiInsights: ReviewAIInsight | null,
+    platformData?: PlatformReviewData[],
+    competitorBenchmark?: CompetitorBenchmark | null
   ): ReviewAudit {
 
-    // Always ensure we have AI insights — use deterministic fallback if AI failed
     const insights = aiInsights ?? this.buildDeterministicFallbackInsights(preprocess);
 
-    // Map legacy fields for backwards compatibility with any remaining users of these structures before cleanup
     const reviewClusters = insights?.top_complaints?.map((c) => ({
       theme: c.problem,
       frequency_percentage: c.frequency_percent,
@@ -463,14 +712,12 @@ export class ReviewService {
       business_impact_estimate: `Severity Score: ${c.severity_score}/10`,
     })) || [];
 
-    // Map legacy revenue leaks
     const revenueLeaks = insights?.top_complaints?.slice(0, 3).map(c => ({
       issue: c.problem,
       potential_business_risk: `Severity Score: ${c.severity_score}/10`,
       recommended_fix: "See action plan for details.",
     })) || [];
 
-    // Map upsell opportunities
     const upsells = (insights?.revenue_opportunities || []).map(opt => ({
       opportunity: opt.opportunity,
       supporting_review_pattern: opt.expected_impact
@@ -486,6 +733,8 @@ export class ReviewService {
         total_reviews: preprocess.total_reviews,
         place_id: preprocess.business_name.toLowerCase().replace(/[^a-z0-9]/g, '_'),
       },
+      platformData,
+      competitorBenchmark: competitorBenchmark || null,
       review_clusters: reviewClusters,
       revenue_leak_indicators: revenueLeaks,
       upsell_opportunities: upsells,
@@ -494,7 +743,7 @@ export class ReviewService {
   }
 
   // ====================================================
-  // DETERMINISTIC FALLBACK — All 8 Sections Without AI
+  // DETERMINISTIC FALLBACK
   // ====================================================
 
   private static buildDeterministicFallbackInsights(p: ReviewPreprocessResult): ReviewAIInsight {
@@ -537,26 +786,33 @@ export class ReviewService {
         { metric: "Rating", your_business: average_rating.toFixed(1), competitor_avg: "4.2" },
         { metric: "Review Count", your_business: total_reviews, competitor_avg: "150" }
       ],
-      reputation_risks: [
-        {
-          problem: "Negative sentiment ratio",
-          frequency_percent: negativePct,
-          severity_score: severityScore
-        }
+      reputation_risks: [{
+        problem: "Negative sentiment ratio",
+        frequency_percent: negativePct,
+        severity_score: severityScore
+      }],
+      revenue_opportunities: [{
+        opportunity: "Improve response rate",
+        expected_impact: "Could improve rating by converting 1-star to 3-star reviews."
+      }],
+      business_mission: `To provide high-quality ${p.business_industry || 'services'} to the ${p.business_location || 'local'} community with a focus on customer satisfaction.`,
+      strategic_roadmap: [
+        { point: "Digital Presence Optimization", benefit: "Increase discovery by 30-40%" },
+        { point: "Reputation Management Automation", benefit: "Maintain a 4.5+ star rating consistently" }
       ],
-      revenue_opportunities: [
-        {
-          opportunity: "Improve response rate",
-          expected_impact: "Could improve rating by converting 1-star to 3-star reviews."
-        }
+      online_presence_audit: [
+        { platform: "Google Maps", status: "active", action_required: "Optimize photos" },
+        { platform: "Facebook", status: "incomplete", action_required: "Update business hours" },
+        { platform: "Yelp", status: "missing", action_required: "Create profile" }
       ],
+      recommended_partners: ["Local Food Delivery Apps", "Nearby complementary businesses"],
+      agency_contribution: ["Professional Website Redesign", "Local SEO Optimization", "Social Media Strategy"],
       action_plan: [
         { timeline_week: "Week 1", action: "Review all 1 and 2 star feedback from the past month." },
         { timeline_week: "Week 2", action: "Address the most frequent operational complaint." }
       ]
     };
   }
-
 
   // ====================================================
   // CACHE UTILITIES

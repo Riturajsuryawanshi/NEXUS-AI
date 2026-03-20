@@ -10,9 +10,9 @@ describe('ReviewService.preprocessReviews', () => {
     // We will cast to any to test the private static method for this unit test to ensure logic correctness.
 
     const mockReviews: RawReview[] = [
-        { rating: 5, text: "Great place!", timestamp: "2023-01-01", author: "A" },
-        { rating: 1, text: "Terrible service.", timestamp: "2023-01-02", author: "B" },
-        { rating: 5, text: "Loved it.", timestamp: "2023-01-03", author: "C" },
+        { rating: 5, text: "Great place!", timestamp: "2023-01-01", author: "A", platform: 'google' },
+        { rating: 1, text: "Terrible service.", timestamp: "2023-01-02", author: "B", platform: 'google' },
+        { rating: 5, text: "Loved it.", timestamp: "2023-01-03", author: "C", platform: 'google' },
     ];
 
     const mockMeta = {
@@ -47,7 +47,7 @@ describe('ReviewService.preprocessReviews', () => {
 
     it('should extract basic keywords', () => {
         const reviews: RawReview[] = [
-            { rating: 5, text: "The pizza was amazing and the pizza was hot", timestamp: "", author: "" }
+            { rating: 5, text: "The pizza was amazing and the pizza was hot", timestamp: "", author: "", platform: 'google' }
         ];
         // @ts-ignore
         const result = ReviewService.preprocessReviews(reviews, mockMeta);

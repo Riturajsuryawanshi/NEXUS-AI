@@ -16,22 +16,24 @@ const GeneralChat: React.FC = () => {
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
-    const userMsg: ChatMessage = { role: 'user', text: input };
+    const userMsg: ChatMessage = { id: `msg_${Date.now()}`, role: 'user', content: input, timestamp: Date.now() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
 
     try {
       const result = await searchGroundedChat(input);
-      const modelMsg: ChatMessage = { 
-        role: 'model', 
-        text: result.text || "No response received.",
+      const modelMsg: ChatMessage = {
+        id: `msg_${Date.now()}_r`,
+        role: 'assistant',
+        content: result.text || "No response received.",
+        timestamp: Date.now(),
         sources: result.sources
-      };
+      } as any;
       setMessages(prev => [...prev, modelMsg]);
     } catch (err) {
       console.error(err);
-      setMessages(prev => [...prev, { role: 'model', text: "Sorry, I encountered an error searching for that." }]);
+      setMessages(prev => [...prev, { id: `msg_${Date.now()}_err`, role: 'assistant', content: "Sorry, I encountered an error searching for that.", timestamp: Date.now() } as ChatMessage]);
     } finally {
       setLoading(false);
     }
@@ -65,21 +67,20 @@ const GeneralChat: React.FC = () => {
         {messages.map((m, idx) => (
           <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`group flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'} max-w-[85%]`}>
-              <div className={`px-5 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                m.role === 'user' 
-                ? 'bg-blue-600 text-white rounded-tr-none' 
-                : 'bg-slate-800 text-slate-100 rounded-tl-none border border-slate-700'
-              }`}>
-                {m.text}
+              <div className={`px-5 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${m.role === 'user'
+                  ? 'bg-blue-600 text-white rounded-tr-none'
+                  : 'bg-slate-800 text-slate-100 rounded-tl-none border border-slate-700'
+                }`}>
+                {(m as any).text || m.content}
               </div>
-              
+
               {m.sources && m.sources.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {m.sources.map((s, si) => s.web && (
-                    <a 
-                      key={si} 
-                      href={s.web.uri} 
-                      target="_blank" 
+                    <a
+                      key={si}
+                      href={s.web.uri}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-[10px] bg-slate-800 hover:bg-slate-700 text-blue-400 px-2 py-1 rounded-md border border-slate-700 transition-colors"
                     >

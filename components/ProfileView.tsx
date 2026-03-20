@@ -8,14 +8,32 @@ interface ProfileViewProps {
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ profile }) => {
-    const [displayName, setDisplayName] = useState(profile.displayName || '');
+    const [formData, setFormData] = useState({
+        displayName: profile.displayName || '',
+        role: profile.role || '',
+        companyName: profile.companyName || '',
+        companyWebsite: profile.companyWebsite || '',
+        teamSize: profile.teamSize || '',
+        primaryIndustry: profile.primaryIndustry || '',
+        mainUseCase: profile.mainUseCase || '',
+        defaultCurrency: profile.defaultCurrency || '$',
+    });
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [monthlyUsage, setMonthlyUsage] = useState(0);
     const [reportLimit, setReportLimit] = useState<number | 'unlimited'>(3);
 
     useEffect(() => {
-        setDisplayName(profile.displayName || '');
+        setFormData({
+            displayName: profile.displayName || '',
+            role: profile.role || '',
+            companyName: profile.companyName || '',
+            companyWebsite: profile.companyWebsite || '',
+            teamSize: profile.teamSize || '',
+            primaryIndustry: profile.primaryIndustry || '',
+            mainUseCase: profile.mainUseCase || '',
+            defaultCurrency: profile.defaultCurrency || '$',
+        });
     }, [profile]);
 
     useEffect(() => {
@@ -29,11 +47,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ profile }) => {
         fetchUsage();
     }, [profile.userId, profile.planType]);
 
+    const handleChange = (field: string, value: string) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
     const handleSave = async () => {
         setIsSaving(true);
         setMessage(null);
         try {
-            await UserService.updateProfile({ display_name: displayName });
+            await UserService.updateProfile(formData);
             setMessage({ type: 'success', text: 'Profile updated successfully' });
         } catch (err: any) {
             setMessage({ type: 'error', text: err.message || 'Failed to update profile' });
@@ -80,29 +102,134 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ profile }) => {
                                     <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 pl-1">Display Name</label>
                                     <input
                                         type="text"
-                                        value={displayName}
-                                        onChange={(e) => setDisplayName(e.target.value)}
+                                        value={formData.displayName}
+                                        onChange={(e) => handleChange('displayName', e.target.value)}
                                         placeholder="Enter your name"
                                         className="w-full px-5 py-4 bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-slate-900 dark:text-white font-semibold placeholder:text-slate-300 dark:placeholder:text-slate-500"
                                     />
                                 </div>
                             </div>
 
+                        </div>
+                    </div>
+
+                    {/* Professional Identity Card */}
+                    <div className="bg-white dark:bg-slate-800/80 p-8 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-8 flex items-center gap-3">
+                            <i className="fas fa-briefcase text-emerald-500 text-2xl"></i>
+                            Professional Identity
+                        </h3>
+                        <div className="space-y-6 relative z-10">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 pl-1">Primary Role</label>
+                                    <select
+                                        value={formData.role}
+                                        onChange={(e) => handleChange('role', e.target.value)}
+                                        className="w-full px-5 py-4 bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-slate-900 dark:text-white font-semibold"
+                                    >
+                                        <option value="">Select a role...</option>
+                                        <option value="agency_owner">Agency Owner</option>
+                                        <option value="consultant">Freelance Consultant</option>
+                                        <option value="marketer">In-house Marketer</option>
+                                        <option value="analyst">Data Analyst</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 pl-1">Team Size</label>
+                                    <select
+                                        value={formData.teamSize}
+                                        onChange={(e) => handleChange('teamSize', e.target.value)}
+                                        className="w-full px-5 py-4 bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-slate-900 dark:text-white font-semibold"
+                                    >
+                                        <option value="">Select size...</option>
+                                        <option value="1">Just Me (Solo)</option>
+                                        <option value="2-10">2 - 10 Employees</option>
+                                        <option value="11-50">11 - 50 Employees</option>
+                                        <option value="50+">50+ Employees</option>
+                                    </select>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 pl-1">Company / Agency Name</label>
+                                    <input
+                                        type="text"
+                                        value={formData.companyName}
+                                        onChange={(e) => handleChange('companyName', e.target.value)}
+                                        placeholder="e.g. Acme Marketing"
+                                        className="w-full px-5 py-4 bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-slate-900 dark:text-white font-semibold placeholder:text-slate-300 dark:placeholder:text-slate-500"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Business Focus Card */}
+                    <div className="bg-white dark:bg-slate-800/80 p-8 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-8 flex items-center gap-3">
+                            <i className="fas fa-bullseye text-amber-500 text-2xl"></i>
+                            Business Focus
+                        </h3>
+                        <div className="space-y-6 relative z-10">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 pl-1">Primary Industry Focus</label>
+                                    <select
+                                        value={formData.primaryIndustry}
+                                        onChange={(e) => handleChange('primaryIndustry', e.target.value)}
+                                        className="w-full px-5 py-4 bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all text-slate-900 dark:text-white font-semibold"
+                                    >
+                                        <option value="">Select industry...</option>
+                                        <option value="ecommerce">E-commerce</option>
+                                        <option value="saas">SaaS & Software</option>
+                                        <option value="hospitality">Hospitality & Restaurants</option>
+                                        <option value="retail">Local Retail</option>
+                                        <option value="healthcare">Healthcare</option>
+                                        <option value="mixed">Mixed / General Agency</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 pl-1">Main Use Case</label>
+                                    <select
+                                        value={formData.mainUseCase}
+                                        onChange={(e) => handleChange('mainUseCase', e.target.value)}
+                                        className="w-full px-5 py-4 bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all text-slate-900 dark:text-white font-semibold"
+                                    >
+                                        <option value="">Select use case...</option>
+                                        <option value="review_intelligence">Review Intelligence & SEO</option>
+                                        <option value="financial_proof">Client Proof Reports</option>
+                                        <option value="general_analysis">General Data Analysis</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 pl-1">Default Currency Code</label>
+                                    <input
+                                        type="text"
+                                        value={formData.defaultCurrency}
+                                        onChange={(e) => handleChange('defaultCurrency', e.target.value)}
+                                        placeholder="e.g. $, EUR, £"
+                                        className="w-full px-5 py-4 bg-white dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-2xl focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all text-slate-900 dark:text-white font-semibold placeholder:text-slate-300 dark:placeholder:text-slate-500"
+                                    />
+                                </div>
+                            </div>
+
                             {message && (
-                                <div className={`p-4 rounded-xl text-xs font-bold flex items-center gap-3 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+                                <div className={`mt-8 p-4 rounded-xl text-xs font-bold flex items-center gap-3 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
                                     <i className={`fas ${message.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}`}></i>
                                     {message.text}
                                 </div>
                             )}
 
-                            <div className="pt-4 flex justify-end">
+                            <div className="pt-8 flex justify-end">
                                 <button
                                     onClick={handleSave}
                                     disabled={isSaving}
-                                    className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-indigo-600 transition-all disabled:opacity-50 flex items-center gap-3 shadow-lg shadow-indigo-500/10"
+                                    className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center gap-3 shadow-lg shadow-slate-900/10"
                                 >
                                     {isSaving ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-save"></i>}
-                                    {isSaving ? 'Saving Changes...' : 'Save Changes'}
+                                    {isSaving ? 'Saving Profile...' : 'Save Profile Details'}
                                 </button>
                             </div>
                         </div>

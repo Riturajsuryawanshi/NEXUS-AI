@@ -2,12 +2,38 @@
 // Review Intelligence Types (11-Section Dashboard)
 // ============================================
 
+/** Supported review platforms */
+export type ReviewPlatform = 'google' | 'yelp' | 'tripadvisor' | 'trustpilot' | 'zomato' | 'justdial' | 'facebook';
+
+/** Platform display metadata */
+export const PLATFORM_META: Record<ReviewPlatform, { label: string; icon: string; color: string }> = {
+    google: { label: 'Google', icon: 'fa-google', color: '#4285F4' },
+    yelp: { label: 'Yelp', icon: 'fa-yelp', color: '#D32323' },
+    tripadvisor: { label: 'TripAdvisor', icon: 'fa-tripadvisor', color: '#34E0A1' },
+    trustpilot: { label: 'Trustpilot', icon: 'fa-star', color: '#00B67A' },
+    zomato: { label: 'Zomato', icon: 'fa-utensils', color: '#E23744' },
+    justdial: { label: 'Justdial', icon: 'fa-phone', color: '#2196F3' },
+    facebook: { label: 'Facebook', icon: 'fa-facebook', color: '#1877F2' },
+};
+
 /** A single raw review record */
 export interface RawReview {
     rating: number; // 1-5
     text: string;
     timestamp: string; // ISO date string
     author?: string;
+    platform: ReviewPlatform; // which platform this review came from
+}
+
+/** Review data fetched from a single platform */
+export interface PlatformReviewData {
+    platform: ReviewPlatform;
+    reviews: RawReview[];
+    rating: number;
+    totalReviews: number;
+    profileUrl?: string;
+    fetchedAt: number;
+    error?: string; // if this platform fetch failed
 }
 
 /** Output of Step 3: Deterministic Preprocessing (NO AI) */
@@ -27,6 +53,46 @@ export interface ReviewPreprocessResult {
         negative_reviews_summary: string[];
         positive_reviews_summary: string[];
     };
+    platforms_analyzed?: ReviewPlatform[];
+}
+
+// ============================================
+// Competitor Benchmarking Types
+// ============================================
+
+/** Profile data for a competitor business */
+export interface CompetitorProfile {
+    name: string;
+    place_id: string;
+    rating: number;
+    total_reviews: number;
+    types: string[];
+    address: string;
+    location?: { lat: number; lng: number };
+    platformData?: PlatformReviewData[];
+    preprocess?: ReviewPreprocessResult;
+}
+
+/** A single benchmarking dimension (e.g. Service Quality) */
+export interface BenchmarkDimension {
+    name: string;
+    subjectScore: number;
+    scores: { name: string; score: number }[];
+}
+
+/** Ranking entry for a specific metric */
+export interface CompetitorRanking {
+    metric: string;
+    rankings: { name: string; value: number | string; rank: number; isSubject?: boolean }[];
+}
+
+/** Full benchmark result comparing subject vs competitors */
+export interface CompetitorBenchmark {
+    subject: CompetitorProfile;
+    competitors: CompetitorProfile[];
+    dimensions: BenchmarkDimension[];
+    rankings: CompetitorRanking[];
+    generatedAt: number;
 }
 
 // ============================================
@@ -76,16 +142,55 @@ export interface ActionPlanStep {
     action: string;
 }
 
-/** Complete AI Insight (8 sections) */
+export interface StrategicRoadmapPoint {
+    point: string;
+    benefit: string;
+}
+
+export interface OnlineListing {
+    platform: string;
+    status: 'active' | 'missing' | 'incomplete';
+    action_required: string;
+}
+
+/** Complete AI Insight (Professional analyst level) */
 export interface ReviewAIInsight {
     executive_summary: ExecutiveSummary;
+    business_mission?: string; // High-level mission/overview
     sentiment_analysis: SentimentAnalysis;
     top_positive_themes: ThemeInsight[];
     top_complaints: ComplaintInsight[];
     competitor_comparison: CompetitorComparison[];
     reputation_risks: ComplaintInsight[]; // maps to section 5
     revenue_opportunities: RevenueOpportunity[];
+    strategic_roadmap?: StrategicRoadmapPoint[]; // Professional growth summary
+    online_presence_audit?: OnlineListing[]; // Status of various listings
+    recommended_partners?: string[]; // Strategic partnership suggestions
+    agency_contribution?: string[]; // Specific services the agency can provide
     action_plan: ActionPlanStep[];
+    cross_platform_analysis?: {
+        platform_sentiment: { platform: ReviewPlatform; positivePercent: number; avgRating: number }[];
+        consistency_score: number; // 0-100, how consistent sentiment is across platforms
+        summary: string;
+    };
+    /** Health scores returned by AI (used in MyReports preview) */
+    health_scores?: {
+        overall: number;
+        service: number;
+        product: number;
+        management: number;
+        reputation: number;
+        operational_stability: number;
+    };
+    /** Business overview returned by AI (used in MyReports preview) */
+    business_overview?: {
+        category: string;
+        summary: string;
+    };
+    /** Top strengths identified by AI */
+    strengths?: ThemeInsight[];
+    /** Top weaknesses identified by AI */
+    weaknesses?: ThemeInsight[];
 }
 
 /** Legacy compatibility types */
@@ -121,6 +226,8 @@ export interface ReviewAudit {
         total_reviews: number;
         place_id: string;
     };
+    platformData?: PlatformReviewData[];
+    competitorBenchmark?: CompetitorBenchmark | null;
     review_clusters: ReviewCluster[];
     revenue_leak_indicators: RevenueLeak[];
     upsell_opportunities: UpsellOpportunity[];

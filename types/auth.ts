@@ -17,9 +17,24 @@ export interface UserProfile {
     displayName?: string;
     avatarUrl?: string;
 
+    // Professional Identity
+    role?: 'agency_owner' | 'consultant' | 'marketer' | 'analyst' | 'other';
+    companyName?: string;
+    companyWebsite?: string;
+    teamSize?: '1' | '2-10' | '11-50' | '50+';
+
+    // Business Focus
+    primaryIndustry?: 'ecommerce' | 'saas' | 'hospitality' | 'retail' | 'healthcare' | 'mixed' | 'other';
+    mainUseCase?: 'review_intelligence' | 'financial_proof' | 'general_analysis' | 'other';
+    defaultCurrency?: string;
+
+    isAdmin: boolean; // New: Admin flag from DB
+
     activeClientId?: string; // New: Tracks current workspace
     preferences: {
         learningMode: boolean;
+        emailAlerts_jobCompletion?: boolean;
+        emailAlerts_weeklySummary?: boolean;
     };
     // Monetization
     subscription?: Subscription;

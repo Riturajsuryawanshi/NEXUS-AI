@@ -56,3 +56,129 @@
 .custom-scrollbar::-webkit-scrollbar-thumb {
   @apply bg-slate-300 rounded-full hover:bg-slate-400;
 }
+
+/* ─── Blog / Article Prose Styles ─────────────────────────────────────────── */
+.blog-content {
+  color: #334155;
+  font-size: 1.0625rem;
+  line-height: 1.85;
+}
+
+.blog-content h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.625rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.blog-content h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.01em;
+}
+
+.blog-content p {
+  margin-bottom: 1.25rem;
+}
+
+.blog-content a {
+  color: #4f46e5;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.blog-content a:hover {
+  color: #4338ca;
+}
+
+.blog-content ul,
+.blog-content ol {
+  padding-left: 1.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.blog-content ul {
+  list-style: disc;
+}
+
+.blog-content ol {
+  list-style: decimal;
+}
+
+.blog-content li {
+  margin-bottom: 0.5rem;
+}
+
+.blog-content strong {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.blog-content code {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 0.15em 0.5em;
+  border-radius: 0.35rem;
+  font-size: 0.875rem;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: #4f46e5;
+  word-break: break-all;
+}
+
+.blog-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.blog-content thead tr {
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+.blog-content thead th {
+  padding: 0.875rem 1.25rem;
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.blog-content tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s;
+}
+
+.blog-content tbody tr:hover {
+  background: #f8fafc;
+}
+
+.blog-content tbody td {
+  padding: 0.875rem 1.25rem;
+  vertical-align: top;
+}
+
+.blog-content blockquote {
+  border-left: 4px solid #6366f1;
+  padding: 1rem 1.5rem;
+  margin: 1.75rem 0;
+  background: #f5f3ff;
+  border-radius: 0 0.75rem 0.75rem 0;
+  font-style: italic;
+  color: #4338ca;
+}

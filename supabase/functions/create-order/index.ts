@@ -19,8 +19,10 @@ const PLANS = {
 }
 
 const CREDIT_PACKS = {
-    '10_credits': { price: 44900, currency: 'INR' },  // ₹449
-    '50_credits': { price: 169900, currency: 'INR' }, // ₹1,699
+    'pack_1': { credits: 1, price: 1500, currency: 'INR' },  // ₹15  — single report
+    'pack_5': { credits: 5, price: 4900, currency: 'INR' },  // ₹49  — 5 credits
+    'pack_15': { credits: 15, price: 12900, currency: 'INR' },  // ₹129 — 15 credits
+    'pack_40': { credits: 40, price: 29900, currency: 'INR' },  // ₹299 — 40 credits
 }
 
 
@@ -107,6 +109,7 @@ serve(async (req) => {
                 console.error(`Invalid credit pack: ${itemId}. Available:`, Object.keys(CREDIT_PACKS))
                 throw new Error('Invalid credit pack selection')
             }
+            console.log(`Credit pack: ${pack.credits} credits for ₹${pack.price / 100}`)
 
             const razorpayResp = await fetch('https://api.razorpay.com/v1/orders', {
                 method: 'POST',
@@ -118,7 +121,7 @@ serve(async (req) => {
                     amount: pack.price,
                     currency: pack.currency,
                     receipt: `rcpt_${user.id.slice(0, 8)}_${Date.now()}`,
-                    notes: { userId: user.id, type, itemId }
+                    notes: { userId: user.id, type, itemId, credits: pack.credits }
                 })
             })
 
@@ -132,10 +135,11 @@ serve(async (req) => {
             console.log(`Razorpay order created: ${orderData.id}`)
 
             resultData = {
-                orderId: orderData.id,
+                orderId: (orderData as any).id,
                 amount: pack.price,
                 currency: pack.currency,
-                keyId: keyId
+                keyId: keyId,
+                credits: pack.credits
             }
         } else {
             throw new Error('Invalid payment type')

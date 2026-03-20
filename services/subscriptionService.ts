@@ -115,16 +115,15 @@ export class SubscriptionService {
     }
 
     static async consumeCredit(userId: string): Promise<boolean> {
-        const credits = await this.getCredits(userId);
-        if (credits <= 0) return false;
+        // Use RPC for atomic decrement
+        const { data, error } = await supabase.rpc('consume_report_credit', {
+            p_user_id: userId
+        });
 
-        // Use RPC for atomic decrement would be better, but doing client-side for now
-        const { error } = await supabase
-            .from('report_credits')
-            .update({ credits_available: credits - 1, updated_at: new Date().toISOString() })
-            .eq('user_id', userId);
-
-        if (error) return false;
+        if (error || data === false) {
+            console.error('Error consuming credit:', error);
+            return false;
+        }
 
         UserService.refreshProfile();
         return true;

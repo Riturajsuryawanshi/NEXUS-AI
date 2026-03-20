@@ -1,12 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Layout, AppView } from './components/Layout';
 import { LandingPage } from './components/LandingPage';
 import { AuthFlow } from './components/AuthFlow';
 import { Settings } from './components/Settings';
 import { MonetizationLab } from './components/MonetizationLab';
 import { ClientList } from './components/ClientList';
-import { ReviewIntelligence } from './components/ReviewIntelligence';
+import { BlogList } from './components/BlogList';
+import { BlogPost } from './components/BlogPost';
+const ReviewIntelligenceLazy = React.lazy(() => import('./components/ReviewIntelligence').then(m => ({ default: m.ReviewIntelligence })));
 import { JobService } from './services/jobService';
 import { UserService } from './services/userService';
 import { ClientService } from './services/clientService'; // New
@@ -18,11 +20,25 @@ import { MyReports } from './components/MyReports';
 const App: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activeView, setActiveView] = useState<AppView>('dashboard');
-  const [authMode, setAuthMode] = useState<'landing' | 'login' | 'signup' | 'app'>('landing');
+  const [authMode, setAuthMode] = useState<'landing' | 'login' | 'signup' | 'app' | 'blog' | 'blog-post'>('landing');
+  const [activeBlogSlug, setActiveBlogSlug] = useState<string | null>(null);
   const [jobs, setJobs] = useState<JobRecord[]>([]);
   const [activeClient, setActiveClient] = useState<Client | undefined>(undefined); // New
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ─── Handle /blog and /blog/:slug routes on page load ───────────────────────
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === '/blog') {
+      setAuthMode('blog');
+      window.history.replaceState({}, '', '/blog');
+    } else if (path.startsWith('/blog/')) {
+      const slug = path.replace('/blog/', '');
+      setActiveBlogSlug(slug);
+      setAuthMode('blog-post');
+    }
+  }, []);
 
   useEffect(() => {
     const unsubscribeAuth = UserService.subscribe(p => {
@@ -104,6 +120,39 @@ const App: React.FC = () => {
     }
   };
 
+  if (authMode === 'blog') {
+    return (
+      <BlogList
+        onSelectArticle={(slug) => {
+          setActiveBlogSlug(slug);
+          setAuthMode('blog-post');
+          window.history.pushState({}, '', `/blog/${slug}`);
+        }}
+        onBack={() => {
+          setAuthMode('landing');
+          window.history.pushState({}, '', '/');
+        }}
+      />
+    );
+  }
+
+  if (authMode === 'blog-post' && activeBlogSlug) {
+    return (
+      <BlogPost
+        slug={activeBlogSlug}
+        onBack={() => {
+          setAuthMode('landing');
+          window.history.pushState({}, '', '/');
+        }}
+        onBackToBlog={() => {
+          setAuthMode('blog');
+          setActiveBlogSlug(null);
+          window.history.pushState({}, '', '/blog');
+        }}
+      />
+    );
+  }
+
   if (authMode === 'landing') {
     return (
       <LandingPage
@@ -111,6 +160,10 @@ const App: React.FC = () => {
         onLogin={() => setAuthMode('login')}
         profile={profile}
         onEnterApp={() => setAuthMode('app')}
+        onOpenBlog={() => {
+          setAuthMode('blog');
+          window.history.pushState({}, '', '/blog');
+        }}
       />
     );
   }
@@ -138,7 +191,7 @@ const App: React.FC = () => {
     switch (activeView) {
       case 'dashboard':
         return (
-          <div className="max-w-[1600px] mx-auto p-8 space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="max-w-[1600px] mx-auto p-4 sm:p-6 md:p-8 space-y-8 md:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header Section */}
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
               <div className="max-w-3xl">
@@ -147,7 +200,7 @@ const App: React.FC = () => {
                   <div className="h-px w-8 bg-slate-200"></div>
                 </div>
                 <h1 className="text-4xl md:text-5xl font-sans font-black text-slate-900 dark:text-white tracking-tight leading-tight mb-4 transition-colors">
-                  Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-nexus-600 to-purple-600 animate-fade-in">{profile?.displayName?.split(' ')[0] || 'Analyst'}</span>.
+                  Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, <span className="text-indigo-600 dark:text-indigo-400">{profile?.displayName?.split(' ')[0] || 'Analyst'}</span>.
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400 text-lg leading-relaxed max-w-xl transition-colors">
                   Your neural engine is online. Upload raw data to generate deterministic insights or audit a business presence instantly.
@@ -207,7 +260,16 @@ const App: React.FC = () => {
             <div className="flex flex-col gap-16">
               {/* Review Intelligence Module - now full width/open canvas */}
               <div className="-mx-8">
-                <ReviewIntelligence key="review-intel-module" />
+                <Suspense fallback={
+                  <div className="flex items-center justify-center py-20">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                      <p className="text-sm font-medium text-slate-400">Loading Review Intelligence...</p>
+                    </div>
+                  </div>
+                }>
+                  <ReviewIntelligenceLazy key="review-intel-module" />
+                </Suspense>
               </div>
 
               {jobs.length === 0 ? (
@@ -258,7 +320,7 @@ const App: React.FC = () => {
         return <ProfileView profile={profile!} />;
       case 'reports':
         return (
-          <div className="max-w-[1600px] mx-auto p-8 space-y-12">
+          <div className="max-w-[1600px] mx-auto p-4 sm:p-6 md:p-8 space-y-8 md:space-y-12">
             <div className="flex items-center gap-3 mb-4">
               <h2 className="text-3xl font-sans font-black text-slate-900 tracking-tight">
                 My <span className="text-indigo-600">Review Audits</span>

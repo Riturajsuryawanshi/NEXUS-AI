@@ -110,28 +110,89 @@ serve(async (req) => {
 
                 if (subError) console.error('Error creating subscription:', subError)
 
+                // 3. Grant Subscription Credits automatically
+                let creditAmount = 0;
+                if (itemId.toLowerCase() === 'pro') {
+                    creditAmount = 50;
+                } else if (itemId.toLowerCase() === 'agency') {
+                    creditAmount = 9999;
+                }
+
+                if (creditAmount > 0) {
+                    console.log(`Granting ${creditAmount} credits to user ${userId} for ${itemId} subscription`);
+
+                    // Use atomic SQL to prevent race conditions
+                    const { error: creditError } = await supabaseAdmin.rpc('increment_report_credits', {
+                        p_user_id: userId,
+                        p_amount: creditAmount
+                    }).maybeSingle();
+
+                    // Fallback if RPC doesn't exist: use raw SQL
+                    if (creditError && creditError.message?.includes('function')) {
+                        // Fetch existing first to avoid overwriting credits
+                        const { data: existingData } = await supabaseAdmin
+                            .from('report_credits')
+                            .select('credits_available')
+                            .eq('user_id', userId)
+                            .maybeSingle();
+
+                        const newBalance = (existingData?.credits_available || 0) + creditAmount;
+
+                        const { error: sqlError } = await supabaseAdmin
+                            .from('report_credits')
+                            .upsert({
+                                user_id: userId,
+                                credits_available: newBalance,
+                                updated_at: new Date().toISOString()
+                            }, { onConflict: 'user_id' });
+
+                        if (sqlError) console.error('Error granting subscription credits:', sqlError);
+                    } else if (creditError) {
+                        console.error('Error granting subscription credits:', creditError);
+                    }
+                }
+
+                // 4. Also update the profile plan_type for immediate frontend feedback
+                const { error: profileError } = await supabaseAdmin
+                    .from('profiles')
+                    .update({ plan_type: itemId })
+                    .eq('id', userId)
+
+                if (profileError) console.error('Error updating profile plan type:', profileError)
+
             } else if (type === 'credit_pack') {
-                const creditAmount = parseInt(itemId.split('_')[0]) || 0
+                const creditAmount = notes.credits || parseInt(itemId.split('_')[1]) || 0
                 console.log(`Granting ${creditAmount} credits to user ${userId}`)
 
-                // Get current credits
-                const { data: creditData } = await supabaseAdmin
-                    .from('report_credits')
-                    .select('credits_available')
-                    .eq('user_id', userId)
-                    .maybeSingle()
+                // Use atomic SQL to prevent race conditions
+                const { error: creditError } = await supabaseAdmin.rpc('increment_report_credits', {
+                    p_user_id: userId,
+                    p_amount: creditAmount
+                }).maybeSingle();
 
-                const currentCredits = creditData?.credits_available || 0
+                // Fallback if RPC doesn't exist: use raw SQL
+                if (creditError && creditError.message?.includes('function')) {
+                    // Fetch existing first to avoid overwriting credits
+                    const { data: existingData } = await supabaseAdmin
+                        .from('report_credits')
+                        .select('credits_available')
+                        .eq('user_id', userId)
+                        .maybeSingle();
 
-                const { error: creditError } = await supabaseAdmin
-                    .from('report_credits')
-                    .upsert({
-                        user_id: userId,
-                        credits_available: currentCredits + creditAmount,
-                        updated_at: new Date().toISOString()
-                    })
+                    const newBalance = (existingData?.credits_available || 0) + creditAmount;
 
-                if (creditError) console.error('Error updating credits:', creditError)
+                    const { error: sqlError } = await supabaseAdmin
+                        .from('report_credits')
+                        .upsert({
+                            user_id: userId,
+                            credits_available: newBalance,
+                            updated_at: new Date().toISOString()
+                        }, { onConflict: 'user_id' });
+
+                    if (sqlError) console.error('Error updating credits:', sqlError);
+                } else if (creditError) {
+                    console.error('Error updating credits:', creditError);
+                }
             }
         } else if (event.event === 'payment.failed' || event.event === 'subscription.halted') {
             const id = event.payload.payment?.entity?.order_id || event.payload.subscription?.entity?.id

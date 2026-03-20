@@ -32,20 +32,20 @@ export const ClientList: React.FC<ClientListProps> = ({ onSelect }) => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-12 flex flex-col items-center">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 sm:p-8 md:p-12 flex flex-col items-center">
             <div className="max-w-6xl w-full">
 
                 {/* Header */}
-                <div className="flex justify-between items-end mb-16">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12 md:mb-16">
                     <div>
-                        <h1 className="text-6xl font-display font-black text-slate-900 dark:text-white tracking-tight uppercase italic mb-4">
+                        <h1 className="text-4xl md:text-6xl font-display font-black text-slate-900 dark:text-white tracking-tight uppercase italic mb-4">
                             Nexus <span className="text-indigo-600 dark:text-indigo-400">Workspace</span>
                         </h1>
-                        <p className="text-2xl text-slate-500 dark:text-slate-400 font-medium">Select a client context to begin earning.</p>
+                        <p className="text-xl md:text-2xl text-slate-500 dark:text-slate-400 font-medium">Select a client context to begin earning.</p>
                     </div>
                     <button
                         onClick={() => setShowCreate(true)}
-                        className="px-8 py-4 bg-slate-900 text-white rounded-[2rem] font-bold text-lg hover:bg-indigo-600 transition-all shadow-xl hover:shadow-indigo-500/20 active:scale-95"
+                        className="w-full md:w-auto px-8 py-4 bg-slate-900 text-white rounded-[2rem] font-bold text-lg hover:bg-indigo-600 transition-all shadow-xl hover:shadow-indigo-500/20 active:scale-95"
                     >
                         <i className="fas fa-plus mr-3"></i> Use New Client
                     </button>
@@ -98,7 +98,7 @@ export const ClientList: React.FC<ClientListProps> = ({ onSelect }) => {
             {/* Modal Overlay */}
             {showCreate && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-12 max-w-lg w-full shadow-2xl animate-in fade-in zoom-in duration-300">
+                    <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 sm:p-12 max-w-lg w-full shadow-2xl animate-in fade-in zoom-in duration-300">
                         <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-2">New Client</h2>
                         <p className="text-slate-500 dark:text-slate-400 mb-8">Establish a new workspace for specific analysis.</p>
 

@@ -87,7 +87,7 @@ export class UserService {
 
     // Fetch Subscription & Credits
     const sub = await SubscriptionService.getCurrentSubscription(userId);
-    const credits = await SubscriptionService.getCredits(userId);
+    let credits = await SubscriptionService.getCredits(userId);
 
     // Plan Limits Override based on Subscription
     let planType: PlanType = (data.plan_type as PlanType) || 'free';
@@ -95,10 +95,22 @@ export class UserService {
       planType = sub.planType;
     }
 
-    const limits = PLAN_LIMITS[planType];
+    const limits = { ...PLAN_LIMITS[planType] };
 
     // Get Auth User for Email
     const { data: { user } } = await supabase.auth.getUser();
+
+    // -- ADMIN BYPASS LOGIC (Database) --
+    const isAdmin = !!data.is_admin;
+
+    if (isAdmin) {
+      planType = 'agency';
+      credits = 9999;
+      // You could update limits here as well, but the PLAN_LIMITS[planType] above
+      // had already been resolved before the admin bypass. Let's recalculate it.
+      Object.assign(limits, PLAN_LIMITS['agency']);
+    }
+    // ------------------------
 
     this.currentUserProfile = {
       userId: data.id,
@@ -116,9 +128,18 @@ export class UserService {
       displayName: data.display_name,
       avatarUrl: data.avatar_url,
       preferences: data.preferences || { learningMode: true },
-      // New:
+      // New Fields:
+      role: data.role,
+      companyName: data.company_name,
+      companyWebsite: data.company_website,
+      teamSize: data.team_size,
+      primaryIndustry: data.primary_industry,
+      mainUseCase: data.main_use_case,
+      defaultCurrency: data.default_currency || '$',
+
       subscription: sub || undefined,
-      creditsAvailable: credits
+      creditsAvailable: credits,
+      isAdmin: isAdmin
     };
     this.notify();
   }
@@ -142,7 +163,8 @@ export class UserService {
       daily_file_limit: 3,
       files_processed_today: 0,
       ai_calls_remaining: 5,
-      preferences: { learningMode: true }
+      preferences: { learningMode: true },
+      is_admin: false
     };
 
     const { error } = await supabase
@@ -239,11 +261,18 @@ export class UserService {
   static async updateProfile(updates: Partial<UserProfile> | any) {
     if (!this.currentUserProfile) return;
 
-    // Filter out fields that shouldn't be updated directly via this method if necessary
-    // For now, we allow updating mapped fields like display_name
     const dbUpdates: any = {};
-    if (updates.display_name) dbUpdates.display_name = updates.display_name;
-    if (updates.avatar_url) dbUpdates.avatar_url = updates.avatar_url;
+    if (updates.displayName !== undefined) dbUpdates.display_name = updates.displayName;
+    if (updates.display_name !== undefined) dbUpdates.display_name = updates.display_name; // Fallback
+    if (updates.avatarUrl !== undefined) dbUpdates.avatar_url = updates.avatarUrl;
+    if (updates.role !== undefined) dbUpdates.role = updates.role;
+    if (updates.companyName !== undefined) dbUpdates.company_name = updates.companyName;
+    if (updates.companyWebsite !== undefined) dbUpdates.company_website = updates.companyWebsite;
+    if (updates.teamSize !== undefined) dbUpdates.team_size = updates.teamSize;
+    if (updates.primaryIndustry !== undefined) dbUpdates.primary_industry = updates.primaryIndustry;
+    if (updates.mainUseCase !== undefined) dbUpdates.main_use_case = updates.mainUseCase;
+    if (updates.defaultCurrency !== undefined) dbUpdates.default_currency = updates.defaultCurrency;
+    if (updates.preferences !== undefined) dbUpdates.preferences = updates.preferences;
 
     if (Object.keys(dbUpdates).length === 0) return;
 
@@ -255,8 +284,18 @@ export class UserService {
     if (error) throw error;
 
     // Optimistic update
-    if (updates.display_name) this.currentUserProfile.displayName = updates.display_name;
-    if (updates.avatar_url) this.currentUserProfile.avatarUrl = updates.avatar_url;
+    if (updates.displayName !== undefined) this.currentUserProfile.displayName = updates.displayName;
+    if (updates.display_name !== undefined) this.currentUserProfile.displayName = updates.display_name;
+    if (updates.avatarUrl !== undefined) this.currentUserProfile.avatarUrl = updates.avatarUrl;
+    if (updates.role !== undefined) this.currentUserProfile.role = updates.role;
+    if (updates.companyName !== undefined) this.currentUserProfile.companyName = updates.companyName;
+    if (updates.companyWebsite !== undefined) this.currentUserProfile.companyWebsite = updates.companyWebsite;
+    if (updates.teamSize !== undefined) this.currentUserProfile.teamSize = updates.teamSize;
+    if (updates.primaryIndustry !== undefined) this.currentUserProfile.primaryIndustry = updates.primaryIndustry;
+    if (updates.mainUseCase !== undefined) this.currentUserProfile.mainUseCase = updates.mainUseCase;
+    if (updates.defaultCurrency !== undefined) this.currentUserProfile.defaultCurrency = updates.defaultCurrency;
+    if (updates.preferences !== undefined) this.currentUserProfile.preferences = updates.preferences;
+
     this.notify();
   }
 

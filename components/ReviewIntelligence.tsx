@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ReviewService, ReviewPipelineStep } from '../services/reviewService';
-import { ReviewAudit, UserProfile, PlanType } from '../types';
+import { ReviewService, ReviewPipelineStep, AuditOptions } from '../services/reviewService';
+import { ReviewAudit, UserProfile, PlanType, ReviewPlatform, PLATFORM_META, PlatformReviewData, CompetitorBenchmark } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { UserService } from '../services/userService';
 import { SubscriptionService } from '../services/subscriptionService';
 import { PricingModal } from './PricingModal';
+import { ReportPaywallModal } from './ReportPaywallModal';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import {
@@ -34,11 +35,16 @@ const STEP_LABELS: Record<ReviewPipelineStep, string> = {
   idle: '',
   parsing: 'Validating URL...',
   fetching: 'Fetching reviews from Google...',
+  fetching_platforms: 'Fetching reviews from other platforms...',
+  fetching_competitors: 'Discovering & analyzing competitors...',
   preprocessing: 'Crunching numbers (Deterministic)...',
   ai_analysis: 'AI Deep Analysis...',
+  benchmarking: 'Building competitor benchmark...',
   complete: 'Report Ready!',
   error: 'Analysis failed',
 };
+
+const ALL_PLATFORMS: ReviewPlatform[] = ['google', 'yelp', 'trustpilot', 'tripadvisor', 'zomato', 'justdial', 'facebook'];
 
 export const ReviewIntelligence: React.FC = () => {
   const [url, setUrl] = useState('');
@@ -48,12 +54,36 @@ export const ReviewIntelligence: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const [monthlyUsage, setMonthlyUsage] = useState(0);
   const [reportLimit, setReportLimit] = useState<number | 'unlimited'>(3);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Multi-platform & competitor state
+  const [selectedPlatforms, setSelectedPlatforms] = useState<ReviewPlatform[]>(['google']);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [competitorUrls, setCompetitorUrls] = useState<string[]>(['']);
+  const [autoDetectCompetitors, setAutoDetectCompetitors] = useState(false);
+
+  const togglePlatform = (p: ReviewPlatform) => {
+    if (p === 'google') return; // Google always enabled
+    setSelectedPlatforms(prev =>
+      prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
+    );
+  };
+
+  const addCompetitorUrl = () => {
+    if (competitorUrls.length < 5) setCompetitorUrls(prev => [...prev, '']);
+  };
+  const updateCompetitorUrl = (index: number, value: string) => {
+    setCompetitorUrls(prev => prev.map((u, i) => i === index ? value : u));
+  };
+  const removeCompetitorUrl = (index: number) => {
+    setCompetitorUrls(prev => prev.filter((_, i) => i !== index));
+  };
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -143,9 +173,15 @@ export const ReviewIntelligence: React.FC = () => {
     }
 
     try {
+      const auditOptions: AuditOptions = {
+        platforms: selectedPlatforms,
+        competitorUrls: competitorUrls.filter(u => u.trim().length > 0),
+        autoDetectCompetitors: autoDetectCompetitors,
+        maxCompetitors: 5,
+      };
       const result = await ReviewService.getAudit(url, (step) => {
         setCurrentStep(step);
-      });
+      }, auditOptions);
       setAudit(result);
 
       // Auto-save report to database (counts toward monthly limit)
@@ -185,6 +221,17 @@ export const ReviewIntelligence: React.FC = () => {
           const auditData = JSON.parse(stored);
           setAudit(auditData);
           setCurrentStep('complete');
+
+          // Check for auto-download flag
+          if (localStorage.getItem('nexus_auto_download') === 'true') {
+            localStorage.removeItem('nexus_auto_download');
+            // Give it a moment to render
+            setTimeout(() => {
+              const exportBtn = document.querySelector('[data-testid="export-pdf-btn"]') as HTMLButtonElement;
+              if (exportBtn) exportBtn.click();
+            }, 1000);
+          }
+
           console.log("Loaded audit from history:", auditData);
         } catch (e) {
           console.error("Failed to load audit from history", e);
@@ -252,6 +299,18 @@ export const ReviewIntelligence: React.FC = () => {
       setIsExporting(false);
     }
   };
+
+  // Guard: free users with no credits need to pay before downloading
+  const handleExportClick = () => {
+    const plan = userProfile?.planType || 'free';
+    const credits = userProfile?.creditsAvailable ?? 0;
+    if (plan === 'free' && credits <= 0) {
+      setShowPaywall(true);
+    } else {
+      exportToPDF();
+    }
+  };
+
 
   const Card: React.FC<{ title: string; icon?: string; children: React.ReactNode; className?: string; badge?: string; badgeColor?: string }> = ({ title, icon, children, className = '', badge, badgeColor }) => (
     <div className={`bg-white dark:bg-slate-800/80 p-5 md:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow ${className}`}>
@@ -394,8 +453,101 @@ export const ReviewIntelligence: React.FC = () => {
       }]
     } : null;
 
+    // Competitor Benchmark Radar Chart
+    const benchmark = audit.competitorBenchmark;
+    const benchmarkRadarData = benchmark && benchmark.competitors.length > 0 ? {
+      labels: benchmark.dimensions.map(d => d.name),
+      datasets: [
+        {
+          label: benchmark.subject.name,
+          data: benchmark.dimensions.map(d => d.subjectScore),
+          backgroundColor: 'rgba(99, 102, 241, 0.2)',
+          borderColor: '#6366f1',
+          borderWidth: 2,
+          pointBackgroundColor: '#6366f1',
+        },
+        ...benchmark.competitors.slice(0, 3).map((comp, idx) => {
+          const colors = ['#f43f5e', '#f59e0b', '#10b981'];
+          return {
+            label: comp.name,
+            data: benchmark.dimensions.map(d => {
+              const s = d.scores.find(s => s.name === comp.name);
+              return s?.score || 0;
+            }),
+            backgroundColor: `${colors[idx]}22`,
+            borderColor: colors[idx],
+            borderWidth: 1.5,
+            pointBackgroundColor: colors[idx],
+          };
+        })
+      ]
+    } : null;
+
     return (
       <div className="space-y-2">
+
+        {/* ============ PLATFORM OVERVIEW (Multi-Platform) ============ */}
+        {audit.platformData && audit.platformData.length > 1 && (
+          <>
+            <SectionHeader number={0} title="Platform Overview" icon="fa-layer-group" description="Review presence across platforms" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {audit.platformData.map((pd, i) => {
+                const meta = PLATFORM_META[pd.platform];
+                return (
+                  <div key={i} className={`p-4 rounded-xl border ${pd.error ? 'border-slate-200 bg-slate-50 opacity-60' : 'border-slate-200 bg-white'} shadow-sm`}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm" style={{ backgroundColor: meta.color }}>
+                        <i className={`fab ${meta.icon}`}></i>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900">{meta.label}</h4>
+                        {pd.error && <span className="text-[10px] text-amber-600 font-medium">{pd.error}</span>}
+                      </div>
+                    </div>
+                    {!pd.error && (
+                      <div className="flex items-baseline gap-4">
+                        <div>
+                          <div className="text-xl font-black text-slate-900">{pd.rating}<span className="text-xs text-slate-400">★</span></div>
+                          <div className="text-[10px] text-slate-400 uppercase font-bold">Rating</div>
+                        </div>
+                        <div>
+                          <div className="text-xl font-black text-slate-900">{pd.totalReviews.toLocaleString()}</div>
+                          <div className="text-[10px] text-slate-400 uppercase font-bold">Reviews</div>
+                        </div>
+                        <div>
+                          <div className="text-xl font-black text-emerald-600">{pd.reviews.length}</div>
+                          <div className="text-[10px] text-slate-400 uppercase font-bold">Fetched</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {/* Combined Score Card */}
+              <div className="p-4 rounded-xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-sm">
+                    <i className="fas fa-chart-line"></i>
+                  </div>
+                  <h4 className="text-sm font-bold text-indigo-900">Combined Score</h4>
+                </div>
+                <div className="flex items-baseline gap-4">
+                  <div>
+                    <div className="text-2xl font-black text-indigo-700">
+                      {(audit.platformData.filter(p => !p.error && p.rating > 0).reduce((s, p) => s + p.rating, 0) / Math.max(1, audit.platformData.filter(p => !p.error && p.rating > 0).length)).toFixed(1)}
+                      <span className="text-xs text-indigo-400">★</span>
+                    </div>
+                    <div className="text-[10px] text-indigo-400 uppercase font-bold">Avg Rating</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-black text-indigo-700">{audit.platformData.reduce((s, p) => s + p.totalReviews, 0).toLocaleString()}</div>
+                    <div className="text-[10px] text-indigo-400 uppercase font-bold">Total Reviews</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* ============ SECTION 1: EXECUTIVE OVERVIEW ============ */}
         <SectionHeader number={1} title="Executive Overview" icon="fa-building" description="Context & baseline metrics" />
@@ -462,8 +614,25 @@ export const ReviewIntelligence: React.FC = () => {
           </div>
         </div>
 
-        {/* ============ SECTION 2: SENTIMENT DASHBOARD ============ */}
-        <SectionHeader number={2} title="Sentiment Dashboard" icon="fa-chart-pie" description="High-level emotional breakdown from recent reviews" />
+        {/* ============ SECTION 2: BUSINESS MISSION & VISION ============ */}
+        {ai?.business_mission && (
+          <>
+            <SectionHeader number={2} title="Business Mission & Vision" icon="fa-bullseye" description="The core values and purpose of the business" />
+            <div className="bg-indigo-50/50 border border-indigo-100 p-6 rounded-2xl">
+              <p className="text-lg font-display font-medium text-slate-800 italic leading-relaxed">
+                &quot;{ai.business_mission}&quot;
+              </p>
+              <div className="mt-4 flex items-center gap-2 text-indigo-600 text-xs font-bold uppercase tracking-widest">
+                <div className="h-px bg-indigo-200 flex-1"></div>
+                <span>AI-EXTRACTED CORE MISSION</span>
+                <div className="h-px bg-indigo-200 flex-1"></div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ============ SECTION 3: SENTIMENT DASHBOARD ============ */}
+        <SectionHeader number={3} title="Sentiment Dashboard" icon="fa-chart-pie" description="High-level emotional breakdown from recent reviews" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card title="Sentiment Ratio" icon="fa-chart-pie">
             <div className="h-40 flex justify-center">
@@ -483,8 +652,8 @@ export const ReviewIntelligence: React.FC = () => {
           </Card>
         )}
 
-        {/* ============ SECTION 3: CUSTOMER FEEDBACK INTELLIGENCE ============ */}
-        <SectionHeader number={3} title="Customer Feedback Intelligence" icon="fa-comments" description="What customers love and hate" />
+        {/* ============ SECTION 4: CUSTOMER FEEDBACK INTELLIGENCE ============ */}
+        <SectionHeader number={4} title="Customer Feedback Intelligence" icon="fa-comments" description="What customers love and hate" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card title="Top Positive Themes" icon="fa-thumbs-up" className="border-emerald-100">
             {ai?.top_positive_themes && ai.top_positive_themes.length > 0 ? (
@@ -537,10 +706,78 @@ export const ReviewIntelligence: React.FC = () => {
           </Card>
         </div>
 
-        {/* ============ SECTION 4: COMPETITOR COMPARISON ============ */}
-        {ai?.competitor_comparison && ai.competitor_comparison.length > 0 && (
+        {/* ============ SECTION 5: COMPETITOR BENCHMARKING ============ */}
+        {benchmark && benchmark.competitors.length > 0 ? (
           <>
-            <SectionHeader number={4} title="Competitor Comparison" icon="fa-scale-balanced" description="How the business stacks up against industry averages" />
+            <SectionHeader number={5} title="Competitor Benchmarking" icon="fa-trophy" description="Real competitive positioning based on live data" />
+
+            {/* Radar Chart */}
+            {benchmarkRadarData && (
+              <Card title="Competitive Radar" icon="fa-bullseye" className="border-indigo-100">
+                <div className="h-64 md:h-80">
+                  <Radar data={benchmarkRadarData} options={{ maintainAspectRatio: false, scales: { r: { min: 0, max: 10, ticks: { stepSize: 2 } } }, plugins: { legend: { position: 'bottom' } } }} />
+                </div>
+              </Card>
+            )}
+
+            {/* Rankings Tables */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              {benchmark.rankings.map((ranking, ri) => (
+                <Card key={ri} title={`${ranking.metric} Ranking`} icon="fa-ranking-star">
+                  <div className="space-y-2">
+                    {ranking.rankings.map((r, i) => (
+                      <div key={i} className={`flex items-center gap-3 p-2 rounded-lg ${r.isSubject ? 'bg-indigo-50 border border-indigo-200' : 'bg-slate-50'}`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${r.rank === 1 ? 'bg-yellow-400 text-yellow-900' :
+                          r.rank === 2 ? 'bg-slate-300 text-slate-700' :
+                            r.rank === 3 ? 'bg-amber-600 text-white' :
+                              'bg-slate-200 text-slate-500'
+                          }`}>
+                          #{r.rank}
+                        </div>
+                        <span className={`text-sm font-medium flex-1 ${r.isSubject ? 'text-indigo-700 font-bold' : 'text-slate-700'}`}>
+                          {r.name} {r.isSubject && <span className="text-[10px] uppercase bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full ml-1">You</span>}
+                        </span>
+                        <span className="text-sm font-bold text-slate-900">{typeof r.value === 'number' ? r.value.toFixed(1) : r.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            {/* Competitor Quick Stats */}
+            <div className="overflow-x-auto mt-4">
+              <table className="w-full text-sm rounded-xl overflow-hidden border border-slate-200">
+                <thead className="bg-slate-50">
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Business</th>
+                    <th className="text-center py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Rating</th>
+                    <th className="text-center py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Reviews</th>
+                    <th className="text-left py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Location</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white">
+                  <tr className="border-b border-indigo-100 bg-indigo-50/30">
+                    <td className="py-3 px-4 font-bold text-indigo-700"><i className="fas fa-star text-indigo-400 mr-1"></i>{benchmark.subject.name}</td>
+                    <td className="py-3 px-4 text-center font-bold text-indigo-700">{benchmark.subject.rating}★</td>
+                    <td className="py-3 px-4 text-center font-bold text-indigo-700">{benchmark.subject.total_reviews.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-slate-500 text-xs">{benchmark.subject.address}</td>
+                  </tr>
+                  {benchmark.competitors.map((comp, i) => (
+                    <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
+                      <td className="py-3 px-4 font-medium text-slate-700">{comp.name}</td>
+                      <td className="py-3 px-4 text-center text-slate-900 font-bold">{comp.rating}★</td>
+                      <td className="py-3 px-4 text-center text-slate-600">{comp.total_reviews.toLocaleString()}</td>
+                      <td className="py-3 px-4 text-slate-500 text-xs">{comp.address}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : ai?.competitor_comparison && ai.competitor_comparison.length > 0 ? (
+          <>
+            <SectionHeader number={5} title="Competitor Comparison" icon="fa-scale-balanced" description="Estimated comparison against industry averages" />
             <div className="overflow-x-auto">
               <table className="w-full text-sm rounded-xl overflow-hidden border border-slate-200">
                 <thead className="bg-slate-50">
@@ -562,12 +799,12 @@ export const ReviewIntelligence: React.FC = () => {
               </table>
             </div>
           </>
-        )}
+        ) : null}
 
-        {/* ============ SECTION 5: REPUTATION RISKS ============ */}
+        {/* ============ SECTION 6: REPUTATION RISKS ============ */}
         {ai?.reputation_risks && ai.reputation_risks.length > 0 && (
           <>
-            <SectionHeader number={5} title="Reputation Risks" icon="fa-shield-halved" description="Immediate threats needing attention" />
+            <SectionHeader number={6} title="Reputation Risks" icon="fa-shield-halved" description="Immediate threats needing attention" />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {ai.reputation_risks.map((risk, i) => (
                 <div key={i} className="p-4 border border-red-200 bg-red-50/50 rounded-xl">
@@ -589,10 +826,10 @@ export const ReviewIntelligence: React.FC = () => {
           </>
         )}
 
-        {/* ============ SECTION 6: GROWTH OPPORTUNITIES ============ */}
+        {/* ============ SECTION 7: GROWTH OPPORTUNITIES ============ */}
         {ai?.revenue_opportunities && ai.revenue_opportunities.length > 0 && (
           <>
-            <SectionHeader number={6} title="Growth Opportunities" icon="fa-arrow-up-right-dots" description="Untapped revenue and improvement areas" />
+            <SectionHeader number={7} title="Growth Opportunities" icon="fa-arrow-up-right-dots" description="Untapped revenue and improvement areas" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {ai.revenue_opportunities.map((opp, i) => (
                 <Card key={i} title={opp.opportunity} icon="fa-lightbulb" className="bg-emerald-50/20 border-emerald-100">
@@ -609,10 +846,94 @@ export const ReviewIntelligence: React.FC = () => {
           </>
         )}
 
-        {/* ============ SECTION 7: ACTION PLAN ============ */}
+        {/* ============ SECTION 8: ONLINE PRESENCE AUDIT ============ */}
+        {ai?.online_presence_audit && ai.online_presence_audit.length > 0 && (
+          <>
+            <SectionHeader number={8} title="Digital Footprint Audit" icon="fa-globe" description="Status of major online listings" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {ai.online_presence_audit.map((listing, i) => (
+                <div key={i} className={`p-4 rounded-xl border flex items-center justify-between ${listing.status === 'active' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                  listing.status === 'incomplete' ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                    'bg-slate-50 border-slate-200 text-slate-500'
+                  }`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${listing.status === 'active' ? 'bg-emerald-100' :
+                      listing.status === 'incomplete' ? 'bg-amber-100' : 'bg-slate-200'
+                      }`}>
+                      <i className={`fas ${listing.status === 'active' ? 'fa-check' : listing.status === 'incomplete' ? 'fa-triangle-exclamation' : 'fa-plus'}`}></i>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold">{listing.platform}</h4>
+                      <p className="text-[10px] uppercase font-black opacity-60 tracking-wider font-display shrink-0 mt-2">{listing.status}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold opacity-80">{listing.action_required}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ============ SECTION 9: STRATEGIC GROWTH ROADMAP ============ */}
+        {ai?.strategic_roadmap && ai.strategic_roadmap.length > 0 && (
+          <>
+            <SectionHeader number={9} title="Strategic Growth Roadmap" icon="fa-route" description="Multi-vector expansion strategy" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {ai.strategic_roadmap.map((point, i) => (
+                <div key={i} className="flex gap-4 p-5 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 font-bold">
+                    {i + 1}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 mb-1">{point.point}</h4>
+                    <p className="text-sm text-slate-500 leading-relaxed">{point.benefit}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ============ SECTION 10: RECOMMENDED PARTNERS & AGENCY VALUE ============ */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
+          {ai?.recommended_partners && ai.recommended_partners.length > 0 && (
+            <div className="space-y-4">
+              <SectionHeader number={10} title="Strategic Partners" icon="fa-handshake" description="Growth through collaboration" />
+              <div className="flex flex-wrap gap-2">
+                {ai.recommended_partners.map((partner, i) => (
+                  <span key={i} className="px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-medium text-slate-700 shadow-sm hover:border-indigo-300 transition-colors">
+                    <i className="fas fa-link text-xs mr-2 text-indigo-400"></i>
+                    {partner}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {ai?.agency_contribution && ai.agency_contribution.length > 0 && (
+            <div className="space-y-4">
+              <SectionHeader number={11} title="Agency-Led Solutions" icon="fa-rocket" description="How we can contribute to your growth" />
+              <div className="grid grid-cols-1 gap-3">
+                {ai.agency_contribution.map((service, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl shadow-md hover:scale-[1.02] transition-transform cursor-pointer group">
+                    <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                      <i className="fas fa-check text-xs"></i>
+                    </div>
+                    <span className="font-bold text-sm tracking-tight">{service}</span>
+                    <i className="fas fa-arrow-right ml-auto text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ============ SECTION 11: ACTION PLAN ============ */}
         {ai?.action_plan && ai.action_plan.length > 0 && (
           <>
-            <SectionHeader number={7} title="Action Plan & Roadmap" icon="fa-list-check" description="Specific tasks categorized by timeline" />
+            <SectionHeader number={12} title="Implementation Timeline" icon="fa-calendar-days" description="4-week immediate correction plan" />
             <div className="space-y-3">
               {ai.action_plan.map((action, i) => (
                 <div key={i} className="flex items-start gap-4 p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-indigo-200 hover:shadow-md transition-all">
@@ -645,8 +966,14 @@ export const ReviewIntelligence: React.FC = () => {
   };
 
   const renderStepIndicator = () => {
-    const steps: ReviewPipelineStep[] = ['parsing', 'fetching', 'preprocessing', 'ai_analysis'];
-    const currentIdx = steps.indexOf(currentStep);
+    const steps: ReviewPipelineStep[] = ['parsing', 'fetching', 'fetching_platforms', 'fetching_competitors', 'preprocessing', 'ai_analysis', 'benchmarking'];
+    const activeSteps = steps.filter(s => {
+      if (s === 'fetching_platforms' && selectedPlatforms.length <= 1) return false;
+      if (s === 'fetching_competitors' && !autoDetectCompetitors && competitorUrls.filter(u => u.trim()).length === 0) return false;
+      if (s === 'benchmarking' && !autoDetectCompetitors && competitorUrls.filter(u => u.trim()).length === 0) return false;
+      return true;
+    });
+    const currentIdx = activeSteps.indexOf(currentStep);
 
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-8 py-12">
@@ -655,7 +982,7 @@ export const ReviewIntelligence: React.FC = () => {
           <div className="absolute inset-0 border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
         </div>
         <div className="space-y-4 w-full max-w-sm">
-          {steps.map((step, i) => {
+          {activeSteps.map((step, i) => {
             const isActive = i === currentIdx;
             const isDone = i < currentIdx;
             return (
@@ -684,7 +1011,7 @@ export const ReviewIntelligence: React.FC = () => {
             <i className="fas fa-brain text-indigo-500"></i>
             Review Intelligence
           </h3>
-          <p className="text-slate-500 text-xs mt-0.5">11-Section Business Analysis • Powered by Google AI</p>
+          <p className="text-slate-500 text-xs mt-0.5">Multi-Platform Business Analysis • Powered by AI</p>
         </div>
         {/* Usage Badge */}
         <div className="flex items-center gap-3">
@@ -722,12 +1049,13 @@ export const ReviewIntelligence: React.FC = () => {
               <span>My Reports</span>
             </button>
             <button
-              onClick={exportToPDF}
+              data-testid="export-pdf-btn"
+              onClick={handleExportClick}
               disabled={isExporting}
               className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold hover:bg-slate-50 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm text-sm disabled:opacity-50"
             >
-              <i className={`fas ${isExporting ? 'fa-circle-notch fa-spin' : 'fa-file-pdf'}`}></i>
-              <span>{isExporting ? 'Generating PDF...' : 'Export PDF'}</span>
+              <i className={`fas ${isExporting ? 'fa-circle-notch fa-spin' : (userProfile?.planType === 'free' && !userProfile?.creditsAvailable) ? 'fa-lock' : 'fa-file-pdf'}`}></i>
+              <span>{isExporting ? 'Generating PDF...' : (userProfile?.planType === 'free' && !userProfile?.creditsAvailable) ? 'Download PDF — ₹15' : 'Export PDF'}</span>
             </button>
           </div>
         )}
@@ -777,6 +1105,88 @@ export const ReviewIntelligence: React.FC = () => {
             You've used all {reportLimit} free reports — Upgrade to continue
           </div>
         )}
+
+        {/* Platform Selector & Advanced Options */}
+        {!isAtLimit && (
+          <div className="mb-2 space-y-2">
+            {/* Platform Pills */}
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mr-1">Platforms:</span>
+              {ALL_PLATFORMS.map(p => {
+                const meta = PLATFORM_META[p];
+                const active = selectedPlatforms.includes(p);
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => togglePlatform(p)}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all border ${p === 'google' ? 'bg-blue-100 border-blue-300 text-blue-700 cursor-default' :
+                      active ? 'bg-white border-slate-300 text-slate-800 shadow-sm' :
+                        'bg-transparent border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
+                      }`}
+                  >
+                    <i className={`fab ${meta.icon}`} style={{ color: active ? meta.color : undefined }}></i>
+                    {meta.label}
+                    {p !== 'google' && active && <i className="fas fa-times text-[8px] ml-0.5 text-slate-400"></i>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Advanced Toggle */}
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="text-[10px] uppercase tracking-wider text-indigo-500 font-bold hover:text-indigo-700 transition-colors"
+              >
+                <i className={`fas fa-chevron-${showAdvanced ? 'up' : 'down'} mr-1`}></i>
+                {showAdvanced ? 'Hide' : 'Show'} Competitor Options
+              </button>
+            </div>
+
+            {/* Competitor Options (collapsible) */}
+            {showAdvanced && (
+              <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-slate-200 p-3 space-y-2 shadow-sm">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoDetectCompetitors}
+                    onChange={(e) => setAutoDetectCompetitors(e.target.checked)}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-xs font-bold text-slate-700">
+                    <i className="fas fa-radar mr-1 text-indigo-500"></i>
+                    Auto-detect nearby competitors (uses Google Nearby Search)
+                  </span>
+                </label>
+                <div className="space-y-1.5">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Or add competitor URLs manually:</span>
+                  {competitorUrls.map((u, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={u}
+                        onChange={(e) => updateCompetitorUrl(i, e.target.value)}
+                        placeholder={`Competitor ${i + 1} Google Maps URL...`}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs focus:outline-none focus:border-indigo-300 text-slate-700"
+                      />
+                      {competitorUrls.length > 1 && (
+                        <button type="button" onClick={() => removeCompetitorUrl(i)} className="text-slate-400 hover:text-rose-500 text-xs"><i className="fas fa-times"></i></button>
+                      )}
+                    </div>
+                  ))}
+                  {competitorUrls.length < 5 && (
+                    <button type="button" onClick={addCompetitorUrl} className="text-[10px] text-indigo-500 font-bold hover:text-indigo-700">
+                      <i className="fas fa-plus mr-1"></i> Add competitor
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="relative group">
           <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 rounded-full blur-xl transition-opacity opacity-0 group-hover:opacity-100"></div>
           <input
@@ -825,6 +1235,18 @@ export const ReviewIntelligence: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Paywall Modal */}
+      <ReportPaywallModal
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onDownloadReady={() => {
+          // Credits added by webhook — trigger download immediately
+          exportToPDF();
+        }}
+        currentUserProfile={userProfile}
+        businessName={audit?.business_summary?.name}
+      />
 
       {/* Pricing Modal */}
       <PricingModal

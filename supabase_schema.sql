@@ -11,6 +11,13 @@ create table if not exists public.profiles (
   daily_file_limit int default 3,
   files_processed_today int default 0,
   ai_calls_remaining int default 5,
+  role text,
+  company_name text,
+  company_website text,
+  team_size text,
+  primary_industry text,
+  main_use_case text,
+  default_currency text default '$',
   preferences jsonb default '{}'::jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );

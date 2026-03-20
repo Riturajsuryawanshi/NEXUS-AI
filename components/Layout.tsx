@@ -18,7 +18,16 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, client }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) setIsSidebarOpen(false);
+      else setIsSidebarOpen(true);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [monthlyUsage, setMonthlyUsage] = useState(0);
   const [reportLimit, setReportLimit] = useState<number | 'unlimited'>(3);
@@ -67,30 +76,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChan
     label: string;
     accentColor?: string;
     onClick?: () => void;
-  }> = ({ view, icon, label, accentColor = 'indigo', onClick }) => {
+  }> = ({ view, icon, label, onClick }) => {
     const isActive = activeView === view;
-    const colors: Record<string, { bg: string; text: string; accent: string; iconActive: string }> = {
-      indigo: { bg: 'bg-indigo-50 dark:bg-indigo-950/40', text: 'text-indigo-700 dark:text-indigo-300', accent: 'bg-indigo-500', iconActive: 'text-indigo-600 dark:text-indigo-400' },
-      purple: { bg: 'bg-purple-50 dark:bg-purple-950/40', text: 'text-purple-700 dark:text-purple-300', accent: 'bg-purple-500', iconActive: 'text-purple-600 dark:text-purple-400' },
-      amber: { bg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-700 dark:text-amber-300', accent: 'bg-amber-500', iconActive: 'text-amber-600 dark:text-amber-400' },
-      emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/40', text: 'text-emerald-700 dark:text-emerald-300', accent: 'bg-emerald-500', iconActive: 'text-emerald-600 dark:text-emerald-400' },
-    };
-    const c = colors[accentColor] || colors.indigo;
 
     return (
       <NavTooltip label={label}>
         <button
           onClick={onClick || (() => onViewChange(view))}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-200 relative ${isActive
-            ? `${c.bg} ${c.text} shadow-sm`
-            : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/50'
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-2xl text-[13px] transition-all duration-200 relative ${isActive
+            ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold shadow-sm ring-1 ring-slate-200/50 dark:ring-slate-700/50'
+            : 'text-slate-500 dark:text-slate-400 font-medium hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800/50'
             }`}
         >
-          {/* Active accent bar */}
-          {isActive && (
-            <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 ${c.accent} rounded-r-full`}></div>
-          )}
-          <i className={`fas ${icon} text-[13px] w-5 text-center transition-colors ${isActive ? c.iconActive : 'text-slate-400 dark:text-slate-500'}`}></i>
+          <i className={`fas ${icon} text-[13px] w-5 text-center transition-colors ${isActive ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}></i>
           <span className={`${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'} transition-all duration-200 whitespace-nowrap`}>{label}</span>
         </button>
       </NavTooltip>
@@ -100,10 +98,18 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChan
 
 
   return (
-    <div className="flex h-screen bg-[#f8fafc] overflow-hidden font-sans">
+    <div className="flex h-screen bg-[#eaeceb] dark:bg-slate-950 p-2 sm:p-3 gap-2 sm:gap-3 overflow-hidden font-sans relative">
+      {/* Mobile Backdrop */}
+      {isSidebarOpen && (
+        <div
+          className="absolute inset-0 bg-slate-900/20 dark:bg-slate-900/60 backdrop-blur-sm z-40 md:hidden rounded-3xl m-2 sm:m-3"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
-        className={`${isSidebarOpen ? 'w-[260px]' : 'w-[72px]'} bg-white/60 dark:bg-slate-900/90 backdrop-blur-2xl border-r border-slate-200/60 dark:border-slate-800/60 flex-shrink-0 flex flex-col transition-all duration-300 ease-out relative z-50`}
+        className={`${isSidebarOpen ? 'translate-x-0 w-[260px]' : '-translate-x-[120%] md:translate-x-0 md:w-[72px]'} absolute top-2 bottom-2 left-2 sm:top-3 sm:bottom-3 sm:left-3 md:static md:top-auto md:bottom-auto md:left-auto bg-white/40 dark:bg-slate-900/60 backdrop-blur-2xl rounded-3xl border border-white/60 dark:border-slate-700/50 flex-shrink-0 flex flex-col transition-all duration-300 ease-out z-50 overflow-hidden shadow-sm`}
       >
         {/* Logo & Toggle */}
         <div className="px-4 h-16 flex items-center justify-between border-b border-slate-100/60 dark:border-slate-800/40">
@@ -134,7 +140,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChan
           {/* Main Section */}
           <div className="space-y-1">
             {isSidebarOpen && (
-              <span className="px-3 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] mb-2 block">Main</span>
+              <span className="px-4 text-[11px] font-medium text-slate-500 mb-1 block">Main menu</span>
             )}
             <NavItem view="dashboard" icon="fa-grid-2" label="Studio" accentColor="indigo" />
             <NavTooltip label="Switch Client">
@@ -151,7 +157,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChan
           {/* Monetization Lab */}
           <div className="space-y-1">
             {isSidebarOpen && (
-              <span className="px-3 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] mb-2 block">Tools</span>
+              <span className="px-4 text-[11px] font-medium text-slate-500 mb-1 block">Tools & features</span>
             )}
             {!isSidebarOpen && (
               <div className="flex justify-center mb-2">
@@ -164,7 +170,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChan
           {/* Reports & Navigation */}
           <div className="space-y-1">
             {isSidebarOpen && (
-              <span className="px-3 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] mb-2 block">Account</span>
+              <span className="px-4 text-[11px] font-medium text-slate-500 mb-1 block">Account</span>
             )}
             {!isSidebarOpen && (
               <div className="flex justify-center mb-2">
@@ -332,10 +338,16 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChan
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen bg-[#f8fafc] dark:bg-slate-950 transition-colors duration-500 relative z-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 shadow-sm relative z-0">
         <header className="h-16 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-white/20 dark:border-slate-800/20 flex items-center justify-between px-6 z-40 sticky top-0 transition-colors duration-500">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 transition-colors">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="md:hidden w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors"
+            >
+              <i className="fas fa-bars"></i>
+            </button>
+            <div className="hidden sm:flex items-center bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 transition-colors">
               <i className="fas fa-search text-slate-400 mr-2 text-xs"></i>
               <input type="text" placeholder="Search analytics..." className="bg-transparent text-xs border-none focus:ring-0 w-40 placeholder-slate-400 text-slate-900 dark:text-slate-100" />
             </div>

@@ -1,3 +1,27 @@
 User-agent: *
 Allow: /
+
+# Allow all major crawlers explicitly
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+# Disallow private/auth routes
+Disallow: /api/
+Disallow: /admin/
+Disallow: /*.json$
+
+# Crawl-delay for non-Google crawlers
+User-agent: *
+Crawl-delay: 1
+
+# Sitemap location
 Sitemap: https://nexus.supernovaind.com/sitemap.xml

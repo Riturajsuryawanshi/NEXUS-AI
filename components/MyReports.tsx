@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { ReviewAudit } from '../types';
+import { ReviewAudit, UserProfile } from '../types';
+import { UserService } from '../services/userService';
+import { SubscriptionService } from '../services/subscriptionService';
+import { ReportPaywallModal } from './ReportPaywallModal';
 
 interface SavedAudit {
     id: string;
@@ -20,9 +23,13 @@ export const MyReports: React.FC<MyReportsProps> = ({ onSelectAudit }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
     const [previewReport, setPreviewReport] = useState<SavedAudit | null>(null);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+    const [showPaywall, setShowPaywall] = useState(false);
 
     useEffect(() => {
         fetchReports();
+        const unsubscribe = UserService.subscribe(setUserProfile);
+        return () => unsubscribe();
     }, []);
 
     const fetchReports = async () => {
@@ -75,6 +82,31 @@ export const MyReports: React.FC<MyReportsProps> = ({ onSelectAudit }) => {
         if (score >= 8) return { text: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/40', border: 'border-emerald-200 dark:border-emerald-800' };
         if (score >= 6) return { text: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/40', border: 'border-amber-200 dark:border-amber-800' };
         return { text: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/40', border: 'border-red-200 dark:border-red-800' };
+    };
+
+    const handleDownloadClick = () => {
+        if (!previewReport) return;
+        const plan = userProfile?.planType || 'free';
+        const credits = userProfile?.creditsAvailable ?? 0;
+
+        if (plan === 'free' && credits <= 0) {
+            setShowPaywall(true);
+        } else {
+            handlePaywallSuccess();
+        }
+    };
+
+    const handlePaywallSuccess = () => {
+        if (!previewReport) return;
+
+        // Save audit to local storage so ReviewIntelligence can load it
+        localStorage.setItem('nexus_active_audit', JSON.stringify(previewReport.audit_data));
+        // Add a flag to trigger auto-download
+        localStorage.setItem('nexus_auto_download', 'true');
+
+        // Close preview and navigate
+        setPreviewReport(null);
+        window.dispatchEvent(new CustomEvent('nexus:navigate', { detail: 'dashboard' }));
     };
 
     if (isLoading) {
@@ -385,6 +417,13 @@ export const MyReports: React.FC<MyReportsProps> = ({ onSelectAudit }) => {
                                     Open Full Report
                                 </button>
                                 <button
+                                    onClick={handleDownloadClick}
+                                    className="px-4 py-3 bg-white border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-bold text-sm hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-400 transition-all flex items-center justify-center gap-2"
+                                    title="Download PDF"
+                                >
+                                    <i className={`fas ${(userProfile?.planType === 'free' && !userProfile?.creditsAvailable) ? 'fa-lock' : 'fa-file-pdf'}`}></i>
+                                </button>
+                                <button
                                     onClick={() => { setDeleteTarget(previewReport.id); }}
                                     className="px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl font-bold text-sm hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
                                 >
@@ -395,6 +434,15 @@ export const MyReports: React.FC<MyReportsProps> = ({ onSelectAudit }) => {
                     </div>
                 </div>
             )}
+
+            {/* Paywall Modal */}
+            <ReportPaywallModal
+                isOpen={showPaywall}
+                onClose={() => setShowPaywall(false)}
+                onDownloadReady={handlePaywallSuccess}
+                currentUserProfile={userProfile}
+                businessName={previewReport?.business_name}
+            />
         </div>
     );
 };
